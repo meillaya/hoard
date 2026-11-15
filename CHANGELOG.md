@@ -11,7 +11,7 @@ Initial release: offline, read-only GGUF inspection, manifests, and hashing.
 
 ### Added
 
-- Three-crate Rust workspace (`hoard-gguf`, `hoard-core`, `hoard-cli`) on
+- Three-crate Rust workspace (`hoard-gguf`, `hoard-core`, `hoard-artifact`) on
   edition 2024, Apache-2.0, with `Cargo.lock` committed and a pinned 1.99.1
   toolchain. Workspace lints deny `unsafe_code`; crates deny missing docs.
 - `hoard-gguf`: strict, zero-copy GGUF v2/v3 parser for little-endian files.

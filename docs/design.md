@@ -29,7 +29,7 @@ into the build.
 | `hoard-gguf` | `hoard-gguf` | `memmap2`, `serde`, `serde_json`, `schemars`, `thiserror`, optional `clap`/`anyhow` | GGUF only. Does not know about manifests, hashes, the network, or other artifacts. |
 | `hoard-core` | none | `blake3`, `sha2`, `hex`, `serde`, `serde_json`, `schemars`, `thiserror`, `tempfile` | Manifest, hashing, CAS, and manifest builder. Does not link `hoard-gguf` or `hoard-hf`; the artifact layer has no network types. |
 | `hoard-hf` | none | `hf-xet`, `reqwest`, `serde`, `serde_json`, `sha2`, `tempfile`, `thiserror`, `url` | Hugging Face resolution and transport only. Does not link `hoard-core`; verification against a manifest belongs to the caller. |
-| `hoard-cli` | `hoard` | `hoard-core`, `hoard-hf`, `anyhow`, `clap`, `serde_json`, `tempfile` | Command surface. Does not link `hoard-gguf`; the two binaries stay independent. |
+| `hoard-artifact` | `hoard` | `hoard-core`, `hoard-hf`, `anyhow`, `clap`, `serde_json`, `tempfile` | Command surface. Does not link `hoard-gguf`; the two binaries stay independent. |
 
 The dependency direction is deliberate. The format layer works on its own, the
 artifact layer has no GGUF or network types, and the transport layer knows
@@ -251,6 +251,6 @@ directly.
 | Binary split | `hoard` and `hoard-gguf` are separate | The format tool is useful without the artifact layer, and the artifact layer must not grow a GGUF dependency. |
 | Test runner | `cargo test`, not `nextest` | One toolchain, no extra install step in CI or the Nix build; the suite is small enough that process-level parallelism is enough. `cargo-nextest` can be layered on later without changing the tests. |
 | Flake scope | `nixpkgs`, `devenv`, and `rust-overlay`, no `flake-utils` | Three systems are enumerated by hand in one small `flake.nix`. The devenv input keeps the shell definition in one place, and full revisions in `flake.lock` and `devenv.lock` keep lock resolution off the branch API. |
-| crates.io names | Publish `hoard-gguf` first; `hoard`/`hoard-cli` publication deferred | The short names `hoard` and `hoard-cli` are likely taken on crates.io, so the release plan publishes the standalone format crate first and resolves the CLI package name before its first release. The binary names are unaffected. |
+| crates.io names | Publish `hoard-gguf` first; `hoard`/`hoard-artifact` publication deferred | The short names `hoard` and `hoard-artifact` are likely taken on crates.io, so the release plan publishes the standalone format crate first and resolves the CLI package name before its first release. The binary names are unaffected. |
 | Development shell | `devenv.nix` is the single definition; the flake delegates to it; rust-overlay honors `rust-toolchain.toml` | `devenv shell` and `nix develop --impure` share one environment and one Rust pin. Plain cargo stays available as the secondary path. |
 | Intel macOS | Not in the flake system list | nixpkgs 26.11 dropped `x86_64-darwin`; see [limits and non-goals](limitations.md). |

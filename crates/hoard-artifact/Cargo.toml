@@ -1,6 +1,6 @@
 [package]
-name = "hoard-cli"
-description = "hoard: artifact pipeline CLI for large model files (manifest and hashing commands in 0.1.0)"
+name = "hoard-artifact"
+description = "Artifact pipeline CLI for large model files: verified fetch, manifests, CAS, and Nix fixed-output paths"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

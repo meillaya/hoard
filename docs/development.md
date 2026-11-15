@@ -204,7 +204,7 @@ on demand. `ci.yml` pins Rust to 1.99.1 with rustfmt and clippy.
 | `crates/hoard-gguf/` | GGUF parser, inspect report, warning codes, JSON schema, fixture builder, `hoard-gguf` binary. |
 | `crates/hoard-core/` | Manifest v1 types, canonical JSON, validation, streaming hashes, content-addressed store, manifest builder, JSON schema. |
 | `crates/hoard-hf/` | Hugging Face resolution, Xet and HTTP transport, retries, redirect policy. |
-| `crates/hoard-cli/` | `hoard` binary: hash, manifest, fetch, verify, store, and push commands. |
+| `crates/hoard-artifact/` | `hoard` binary: hash, manifest, fetch, verify, store, and push commands. |
 | `schemas/` | Committed JSON Schemas generated from the Rust types. |
 | `fixtures/manifests/` | Committed manifest fixtures (real and synthetic). |
 | `fixtures/real/` | Downloaded real GGUF corpus (gitignored). |

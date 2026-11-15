@@ -3,7 +3,7 @@ resolver = "3"
 members = [
   "crates/hoard-gguf",
   "crates/hoard-core",
-  "crates/hoard-cli",
+  "crates/hoard-artifact",
   "crates/hoard-hf",
 ]
 

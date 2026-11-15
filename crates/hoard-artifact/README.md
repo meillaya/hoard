@@ -1,4 +1,4 @@
-# hoard-cli
+# hoard-artifact
 
 The `hoard` command line: file hashes and manifest checks for model artifact
 sets.

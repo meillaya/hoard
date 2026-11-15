@@ -30,7 +30,7 @@ Per crate:
 ```sh
 CARGO_HOME="$PWD/.cargo-home" cargo test -p hoard-gguf --all-features
 CARGO_HOME="$PWD/.cargo-home" cargo test -p hoard-core
-CARGO_HOME="$PWD/.cargo-home" cargo test -p hoard-cli
+CARGO_HOME="$PWD/.cargo-home" cargo test -p hoard-artifact
 CARGO_HOME="$PWD/.cargo-home" cargo test -p hoard-hf
 ```
 
@@ -85,7 +85,7 @@ The workspace has 341 tests and 3 doctests:
 | --- | --- | --- |
 | `hoard-gguf` | 171 | 0 |
 | `hoard-core` | 118 | 1 (`store_root_env_probe`) |
-| `hoard-cli` | 7 | 0 |
+| `hoard-artifact` | 7 | 0 |
 | `hoard-hf` | 45 | 1 (`live_xet_downloads_stories260k`) |
 
 `store_root_env_probe` is a child-process probe that the store-root tests spawn
@@ -111,7 +111,7 @@ with a controlled environment, so it is not meant to run on its own.
 | Manifest builder | `crates/hoard-core/tests/artifact.rs` | Role inference, split set detection and rejection rules, symmetric siblings, group placement, source/CAS disagreement, atomic canonical write, a build from a real store. |
 | Hub client and transport | `crates/hoard-hf/tests/mock_hub.rs` | Resolve and list against a local `wiremock` server, statuses, redirects to allowed and foreign hosts, truncated bodies, transport selection, missing or malformed digests, the bearer token header, and retry on connection errors. |
 | Live Xet gate | `crates/hoard-hf/tests/live_xet.rs` | Ignored by default. Real Xet download of the pinned file with transport, size, digest, and part-file assertions. |
-| `hoard` CLI | `crates/hoard-cli/tests/cli.rs` | `hash`, `manifest validate/fmt/hash/schema`, exit codes, JSON output, real-file hashes when present. |
+| `hoard` CLI | `crates/hoard-artifact/tests/cli.rs` | `hash`, `manifest validate/fmt/hash/schema`, exit codes, JSON output, real-file hashes when present. |
 | `hoard-gguf` CLI | `crates/hoard-gguf/tests/cli_inspect.rs` | `inspect` human/`--json`/`--tensors` output, `schema`, errors, real-corpus numbers when present. |
 | Robustness / property | `crates/hoard-gguf/tests/robustness.rs` | `proptest`: arbitrary bytes, GGUF-prefixed bytes, mutated/truncated/appended rich fixtures, and header mutations never panic the parse-to-report pipeline. |
 | Malformed matrix | `crates/hoard-gguf/tests/malformed.rs` | Truncation at every byte of both committed fixtures, bad magic/version/byte order, unknown value types, invalid UTF-8 and booleans, huge counts and lengths, more than four dimensions, block mismatch, duplicate names, out-of-bounds tensor and data ranges, zero alignment, and every warning code. |

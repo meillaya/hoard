@@ -909,7 +909,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "hoard-cli"
+name = "hoard-artifact"
 version = "0.1.0"
 dependencies = [
  "anyhow",

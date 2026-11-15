@@ -115,7 +115,7 @@ hoard-core   manifest v1, canonical JSON, validation, streaming hashes,
              content-addressed store, manifest builder
 hoard-hf     Hugging Face resolution, Xet and HTTP transport, retry and
              redirect policy
-hoard-cli    the `hoard` binary: hash, manifest, fetch, verify, store, push
+hoard-artifact  the `hoard` binary: hash, manifest, fetch, verify, store, push
 ```
 
 The format crate builds the `hoard-gguf` binary and does not depend on the
