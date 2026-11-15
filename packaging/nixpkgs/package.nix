@@ -15,14 +15,12 @@ rustPlatform.buildRustPackage (finalAttrs: {
   src = fetchFromGitHub {
     owner = "meillaya";
     repo = "hoard";
-    # Upstream has not tagged a release yet; pin the commit that is on `main`
-    # when this package was prepared. Replace with `rev = "v${version}"` once
-    # a tag exists.
-    rev = "a5800608acc11c795df6ec92a863125bc9f34f07";
-    hash = "sha256-s4Ii/r4SmxfojxlyT8pwpCno9K+BpbQ63KzFpoVgIS4=";
+    # Upstream tags releases; v0.1.0 is the first published crate set.
+    rev = "v0.1.0";
+    hash = "sha256-cJka6IG5DIKAX4EPMeAUBt51qT9Ov3Pb7FLX3bI3cGk=";
   };
 
-  cargoHash = "sha256-hP2cQBjrByYFT4oTKoDsU4RRgGzt/NwTrxjzhFJ+tVs=";
+  cargoHash = "sha256-z0B467EbW+XYK6zmzVuNdX/VpPUzzVI43d+DJIqa8DM=";
 
   # Build the whole workspace: an install hook copies every binary to $out/bin,
   # so both `hoard` and `hoard-gguf` land there.

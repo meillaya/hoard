@@ -28,9 +28,7 @@ names do not change.
 
 `package.nix` is a `buildRustPackage` expression with:
 
-- `fetchFromGitHub` pinned to `meillaya/hoard` at the current `main` commit
-  `a5800608acc11c795df6ec92a863125bc9f34f07` (upstream has no git tags yet,
-  see caveats).
+- `fetchFromGitHub` pinned to `meillaya/hoard` at tag `v0.1.0`.
 - `hash` and `cargoHash` computed from a clean build (see below). No
   `cargoLock`/`importCargoLock`; a plain cargo vendor hash so the package
   follows the common nixpkgs Rust pattern.
@@ -57,12 +55,13 @@ names do not change.
 
 | Hash | Value | How obtained |
 | --- | --- | --- |
-| `src.hash` | `sha256-s4Ii/r4SmxfojxlyT8pwpCno9K+BpbQ63KzFpoVgIS4=` | Clean `nix-build` of `fetchFromGitHub` with `lib.fakeHash`; reported `got:` value |
-| `cargoHash` | `sha256-hP2cQBjrByYFT4oTKoDsU4RRgGzt/NwTrxjzhFJ+tVs=` | Clean `nix-build` with `lib.fakeHash`; reported `got:` value |
+| `src.hash` | `sha256-cJka6IG5DIKAX4EPMeAUBt51qT9Ov3Pb7FLX3bI3cGk=` | `lib.fakeHash` build against nixpkgs `d5cc683…`; reported `got:` value |
+| `cargoHash` | `sha256-z0B467EbW+XYK6zmzVuNdX/VpPUzzVI43d+DJIqa8DM=` | `lib.fakeHash` build against nixpkgs `d5cc683…`; reported `got:` value |
 
-`src.hash` is the NAR hash of the GitHub tarball for commit
-`a5800608acc11c795df6ec92a863125bc9f34f07`; `cargoHash` is the hash of the
-vendored crates from the committed `Cargo.lock`.
+`src.hash` is the NAR hash of the GitHub tarball for tag `v0.1.0`; `cargoHash`
+is the hash of the vendored crates from the committed `Cargo.lock`. Both were
+recomputed after the CLI crate rename and verified with a clean `nix-build` of
+the final expression.
 
 ## Verification
 
@@ -71,7 +70,8 @@ pinned to `NixOS/nixpkgs` rev `d5cc6833999746cffdfe0598f7bc801a57b887a9`
 (the project's `flake.lock` pin), rustc 1.99.1 / cargo 1.99.1 from nixpkgs.
 
 The expression was evaluated and built against that exact nixpkgs checkout
-without using the project flake:
+without using the project flake. The final run used tag `v0.1.0` and the hashes
+in the table above:
 
 ```sh
 NP=$(nix eval --impure --raw --expr 'builtins.toString (builtins.fetchTree {
@@ -194,15 +194,8 @@ Tested with `nix-build` against nixpkgs at the project's `flake.lock` pin
    requires either a nixpkgs maintainer to adopt it, or the upstream author to
    be added to `maintainers/maintainer-list.nix` (a separate PR). This is a
    review blocker, flagged on purpose.
-2. **No upstream release tag.** `https://github.com/meillaya/hoard` has only
-   the `main` branch (`a5800608acc11c795df6ec92a863125bc9f34f07`); there are no
-   tags. nixpkgs strongly prefers tagged releases, and
-   `passthru.updateScript = nix-update-script { }` cannot update a tag-based
-   package that has no tags. Options: upstream tags `v0.1.0` (best), or this
-   becomes `version = "0.1.0-unstable-2026-11-15"` with an
-   `--version=unstable` update script. The draft keeps `version = "0.1.0"` and
-   a commit rev because that is what the task asked for; the PR should not be
-   opened until the versioning question is resolved.
+2. **Release tag.** Resolved: upstream tagged `v0.1.0`, and the expression now
+   pins that tag. `nix-update-script` can track future tags.
 3. **Attribute name collision.** `hoard` exists in nixpkgs
    (Hyde46/hoard 1.4.2). The natural attribute is `hoard-artifact`; whether
    `pname` should also be `hoard-artifact` is a reviewer call. There are
