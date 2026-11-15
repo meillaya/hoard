@@ -177,15 +177,16 @@ plan hold, and the remaining work is listed at the end.
   A truncated body keeps the part file for a Range resume; a digest mismatch
   removes it.
 - Requests retry three times on 429, 5xx, connection, and timeout failures with
-  exponential backoff and jitter. Redirects stop at the Hugging Face hosts, the
-  Xet CAS host, or the configured endpoint host, with at most eight hops.
+  exponential backoff and jitter. Redirects follow only to the Hugging Face
+  hosts, the Xet CAS host, or the configured endpoint host, with at most eight
+  hops.
 - The manifest is written after the bytes are hashed: `blake3` comes from the
   CAS entry, and `sha256` and `size` come from the source listing. The builder
   rejects any disagreement between the two, and the manifest write is atomic.
 - Verification is fail-closed. `hoard fetch --manifest` checks the remote size
   and SHA-256 against the manifest before downloading and compares BLAKE3 after
   storing. `hoard verify` re-hashes CAS blobs or directory files. A mismatch
-  exits 1 and no manifest is written.
+  exits 1, and a spec fetch writes no manifest.
 - There is no trust-on-first-use cache. Reads re-hash the blob, so a poisoned
   store entry is rejected instead of used.
 
@@ -205,12 +206,15 @@ The flake exports two helpers:
 The flat-FOD decision follows from the hash formats. Nix fixed-output
 derivations support sha256 and sha512, and manifest v1 records the source
 sha256 for every file, so each file maps to one FOD with
-`outputHashMode = "flat"`. The store path then contains exactly the file bytes,
-and its name is `hoard-<first 12 characters of sha256>-<basename>`.
-`hoard store` reproduces the same path with `nix-store --add-fixed sha256`, and
-`hoard push` copies it with `nix copy`. A recursive NAR derivation would wrap
-the bytes in a directory and force a whole set to rebuild when one file
-changes, so the helper uses one FOD per file and a symlink farm for the set.
+`outputHashMode = "flat"`. The helper converts the hex digest to SRI with
+`builtins.convertHash` and passes the manifest JSON into the derivation as a
+file, so the build does not need a store reference to the manifest. The store
+path then contains exactly the file bytes, and its name is
+`hoard-<first 12 characters of sha256>-<basename>`. `hoard store` reproduces the
+same path with `nix-store --add-fixed sha256`, and `hoard push` copies it with
+`nix copy`. A recursive NAR derivation would wrap the bytes in a directory and
+force a whole set to rebuild when one file changes, so the helper uses one FOD
+per file and a symlink farm for the set.
 
 Signing belongs to the cache. Hoard holds no keys, and `hoard push` delegates to
 `nix copy`; a cache that requires signatures needs Nix's signing configuration
@@ -246,7 +250,7 @@ directly.
 | Memory mapping | Zero-copy view, one audited `unsafe` | Inspecting a multi-gigabyte file should be cheap. Keeping the only `unsafe` in one documented function makes the workspace lint meaningful. |
 | Binary split | `hoard` and `hoard-gguf` are separate | The format tool is useful without the artifact layer, and the artifact layer must not grow a GGUF dependency. |
 | Test runner | `cargo test`, not `nextest` | One toolchain, no extra install step in CI or the Nix build; the suite is small enough that process-level parallelism is enough. `cargo-nextest` can be layered on later without changing the tests. |
-| Flake scope | nixpkgs input only, no `flake-utils`/devenv | Three systems are enumerated by hand in one small `flake.nix`; fewer moving inputs means fewer lock updates and less eval machinery. |
+| Flake scope | `nixpkgs`, `devenv`, and `rust-overlay`, no `flake-utils` | Three systems are enumerated by hand in one small `flake.nix`. The devenv input keeps the shell definition in one place, and full revisions in `flake.lock` and `devenv.lock` keep lock resolution off the branch API. |
 | crates.io names | Publish `hoard-gguf` first; `hoard`/`hoard-cli` publication deferred | The short names `hoard` and `hoard-cli` are likely taken on crates.io, so the release plan publishes the standalone format crate first and resolves the CLI package name before its first release. The binary names are unaffected. |
 | Development shell | `devenv.nix` is the single definition; the flake delegates to it; rust-overlay honors `rust-toolchain.toml` | `devenv shell` and `nix develop --impure` share one environment and one Rust pin. Plain cargo stays available as the secondary path. |
 | Intel macOS | Not in the flake system list | nixpkgs 26.11 dropped `x86_64-darwin`; see [limits and non-goals](limitations.md). |

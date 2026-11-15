@@ -88,8 +88,8 @@ The workspace has 341 tests and 3 doctests:
 | `hoard-cli` | 7 | 0 |
 | `hoard-hf` | 45 | 1 (`live_xet_downloads_stories260k`) |
 
-`store_root_env_probe` mutates process environment variables, so it stays
-ignored unless you run `cargo test -p hoard-core -- --ignored`.
+`store_root_env_probe` is a child-process probe that the store-root tests spawn
+with a controlled environment, so it is not meant to run on its own.
 
 ## Current tests
 

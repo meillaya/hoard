@@ -96,7 +96,10 @@
           outputHashAlgo = "sha256";
           outputHashMode = "flat";
           impureEnvVars = [ "HF_TOKEN" ];
-          nativeBuildInputs = [ hoard pkgs.cacert ];
+          nativeBuildInputs = [
+            hoard
+            pkgs.cacert
+          ];
           passAsFile = [ "manifestJson" ];
           buildCommand = ''
             export HOME="$TMPDIR"

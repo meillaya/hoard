@@ -146,6 +146,7 @@ nix flake check                # builds the package check
 nix build .#default            # builds both binaries
 nix run .# -- --version
 nix fmt                        # nixfmt
+bash scripts/check-nix-roundtrip.sh   # build the example, rebuild it offline
 ```
 
 The flake exposes three systems: `x86_64-linux`, `aarch64-linux`, and
@@ -154,29 +155,42 @@ devShell or package output. Cargo builds may still work there with a
 system-provided Rust, but the flake does not guarantee it. The supported systems
 are also listed in [limits and non-goals](limitations.md).
 
-`nixpkgs` is an input without `flake-utils` or devenv: the three systems are
-enumerated by hand. `flake.lock` pins a nixos-unstable revision. Updating it
-resolves the branch through the GitHub API, which is rate-limited in some
-sandboxes; if resolution fails, pin a full commit rev in `flake.nix` and re-run
-`nix flake lock`.
+`nixpkgs` is an input without `flake-utils`: the three systems are enumerated by
+hand. `flake.lock` and `devenv.lock` pin the inputs by full revisions, so
+updating them does not go through branch resolution. To move the pin
+deliberately, update the revision and re-run `nix flake lock`.
 
 The Nix package builds the whole workspace with `rustPlatform.buildRustPackage`
 and installs both `hoard` and `hoard-gguf`. Dependencies come from the committed
 `Cargo.lock` via `cargoLock.lockFile` (`importCargoLock`), so the build needs no
 aggregate vendoring hash: each crate is fetched by its locked checksum and the
-build itself runs offline. To advance dependencies, update `Cargo.lock`, commit
-it, and re-run `nix build .#default`.
+build itself runs offline. `reqwest` and `hf-xet` enable `aws-lc-rs` through
+rustls, so the package takes `pkgs.aws-lc` and sets `SSL_CERT_FILE` and
+`SSL_CERT_DIR` to the nixpkgs CA bundle. To advance dependencies, update
+`Cargo.lock`, commit it, and re-run `nix build .#default`.
+
+The flake also exports `lib.fetchArtifact` and `lib.fetchArtifactSet`, which turn
+manifest entries into flat fixed-output derivations and a symlink farm. The
+helper reads the manifest at evaluation time and passes its JSON into the build
+as a file, so a derivation does not depend on the manifest store path. The
+consumer example is `examples/nix`; its manifest is
+`examples/nix/models/stories15M-q8_0.json`. The helpers call the packaged
+`hoard fetch` inside each derivation, so a first build needs network access and
+`HF_TOKEN` for a gated repository. `hoard store` and `hoard push` shell out to
+`nix-store` and `nix copy`; keep those on `PATH` when you use those commands.
+`hoard fetch` and `hoard verify` do not need Nix.
 
 Tests that need `fixtures/real/` skip inside the Nix sandbox because those
 files are not part of the flake source; a Nix build therefore does not download
-the real corpus.
+the real corpus. The round-trip script is the only Nix-side check that fetches
+model bytes, and it does so through the packaged binary.
 
 ## CI
 
 | Workflow | What it runs |
 | --- | --- |
-| `.github/workflows/ci.yml` | fmt, clippy (`-D warnings`), fixture download, workspace tests, `cargo doc` with `-D warnings`. |
-| `.github/workflows/nix.yml` | `nix flake check`, `nix build .#default`, `--version` smoke checks, real-fixture inspect smoke test. |
+| `.github/workflows/ci.yml` | Primary `devenv` job: `devenv test` (fmt, clippy, workspace tests) and `cargo doc` with `-D warnings`. Secondary `cargo` job: fmt, clippy, fixture download, workspace tests, and `cargo doc` with `-D warnings`. A separate `xet-live` job runs the live Xet gate on pushes to `main` and manual dispatch. |
+| `.github/workflows/nix.yml` | `nix flake check`, `nix develop --impure` smoke check, `nix build .#default`, `--version` smoke checks, the Nix round-trip, and a real-fixture inspect smoke test. |
 | `.github/workflows/deny.yml` | `cargo-deny check` over advisories, bans, licenses, and sources. |
 | `.github/workflows/actionlint.yml` | actionlint on workflows and shellcheck on `scripts/*.sh`. |
 
@@ -188,15 +202,17 @@ on demand. `ci.yml` pins Rust to 1.99.1 with rustfmt and clippy.
 | Path | Contents |
 | --- | --- |
 | `crates/hoard-gguf/` | GGUF parser, inspect report, warning codes, JSON schema, fixture builder, `hoard-gguf` binary. |
-| `crates/hoard-core/` | Manifest v1 types, canonical JSON, validation, streaming hashes, JSON schema. |
-| `crates/hoard-cli/` | `hoard` binary: hash and manifest commands. |
+| `crates/hoard-core/` | Manifest v1 types, canonical JSON, validation, streaming hashes, content-addressed store, manifest builder, JSON schema. |
+| `crates/hoard-hf/` | Hugging Face resolution, Xet and HTTP transport, retries, redirect policy. |
+| `crates/hoard-cli/` | `hoard` binary: hash, manifest, fetch, verify, store, and push commands. |
 | `schemas/` | Committed JSON Schemas generated from the Rust types. |
 | `fixtures/manifests/` | Committed manifest fixtures (real and synthetic). |
 | `fixtures/real/` | Downloaded real GGUF corpus (gitignored). |
-| `scripts/` | `fetch-fixtures.sh`; future automation. |
+| `examples/nix/` | Consumer flake for `lib.fetchArtifactSet` and the split manifest it builds. |
+| `scripts/` | `fetch-fixtures.sh` and `check-nix-roundtrip.sh`. |
 | `docs/` | This documentation set. The top-level `README.md` links each document. |
 | `.github/workflows/` | CI. |
-| `flake.nix`, `flake.lock` | Dev shell, package, apps, checks, formatter. |
+| `flake.nix`, `flake.lock`, `devenv.nix`, `devenv.lock` | Development shell, package, apps, checks, formatter, and Nix artifact helpers. |
 
 ## Versioning
 

@@ -77,7 +77,7 @@ The commands split by network use:
 - `hoard-gguf`, `hoard hash`, and `hoard manifest` read local files and print
   output. They write nothing and open no network connections.
 - `hoard fetch` is the only command that opens a network connection. It writes
-  the CAS, a manifest, and optional `--out` files.
+  the CAS and optional `--out` files, and for a spec it writes a manifest.
 - `hoard verify` and `hoard store` read the CAS. `hoard push` runs `nix copy`
   against the destination URI.
 

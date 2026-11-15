@@ -87,8 +87,9 @@ weights shards from one split model. Each entry records the shared group
    ```
 
 Expected end state: three blobs in the CAS and the full split tree under
-`split-out/`. A manifest that names only some parts of a split set fails
-manifest validation, so hoard never records a partial sibling relation.
+`split-out/`. A fetch from a spec requires the complete split set: hoard detects
+the suffix among the selected weights and rejects a partial set, so a generated
+manifest never records a partial sibling relation.
 
 To build a new manifest for a split model from a spec, pass every part with
 `--file` and the same `--group`. Hoard detects the `-NNNNN-of-NNNNN.gguf`
@@ -132,10 +133,10 @@ HTTP downloads write `<destination>.part` and rename only after the SHA-256 and
 size match. A truncated body leaves the part file so the next HTTP run can send
 a Range request and continue; a digest mismatch removes it. Requests retry
 3 times on 429, 5xx, connection, and timeout failures with exponential backoff
-and jitter. Redirects follow at most 8 hops and stop at the Hugging Face hosts,
-the Xet CAS host, or the configured endpoint host. Plain HTTP is accepted only
-on the configured `HF_ENDPOINT` host, which keeps local mirrors and test servers
-usable.
+and jitter. Redirects follow only to the Hugging Face hosts, the Xet CAS host,
+or the configured endpoint host, with at most 8 hops. Plain HTTP is accepted
+only on the configured `HF_ENDPOINT` host, which keeps local mirrors and test
+servers usable.
 
 The Xet shard cache lives in `HOARD_XET_CACHE` when that variable is set. The
 default is a temporary directory that is removed when the download finishes.
@@ -155,8 +156,9 @@ hoard fetch --manifest stories260K.json \
   --file tinyllamas/stories260K.gguf --out single.gguf
 ```
 
-A fetch from a spec always treats `--out` as a directory. Without `--out`, the
-command only populates the CAS and writes the manifest.
+A fetch from a spec always treats `--out` as a directory. Without `--out`, a
+fetch from a spec populates the CAS and writes the manifest; a fetch from a
+manifest only populates the CAS.
 
 ## Verify a manifest
 
@@ -178,6 +180,30 @@ $ echo $?
 
 On success the command prints `verified <N> file(s)` to stderr and exits 0. On
 failure it prints one stderr line per bad file, then exits 1.
+
+## Reference
+
+| Command | Purpose |
+| --- | --- |
+| `hoard fetch <spec> --file <path> --manifest-out <file>` | Resolve a Hub revision, download and verify the named files into the CAS, write a manifest. |
+| `hoard fetch --manifest <file> [--file <path>] [--out <path>] [--offline]` | Fill the CAS from an existing manifest, and optionally materialize files. |
+| `hoard verify --manifest <file> [--dir <dir> | --store]` | Check a manifest against a directory or the CAS. |
+| `hoard store --manifest <file>` | Add the manifest files to the Nix store as flat fixed-output paths. |
+| `hoard push --manifest <file> --to <store-uri>` | Copy the flat store paths to a Nix binary cache. |
+
+Both fetch forms also take `--transport auto|xet|http`. A spec form also takes
+`--group`, `--repo-type`, and `--role`. Every flag, the exit codes, and the
+canonical manifest rules are in [usage](usage.md).
+
+| Variable | Effect |
+| --- | --- |
+| `HOARD_STORE` | Content-addressed store root. Overrides the default. |
+| `XDG_CACHE_HOME` | Base for the default store root: `$XDG_CACHE_HOME/hoard/store`. |
+| `HOME` | Fallback base: `$HOME/.cache/hoard/store`. |
+| `HF_ENDPOINT` | Hugging Face endpoint, default `https://huggingface.co`. Use a mirror or a local test server to override it. |
+| `HF_TOKEN` | Bearer token for gated or private repositories. Takes precedence over `HUGGING_FACE_HUB_TOKEN`. |
+| `HUGGING_FACE_HUB_TOKEN` | Fallback token variable. |
+| `HOARD_XET_CACHE` | Xet shard cache directory. The default is a temporary directory per download. |
 
 ## Nix consumer
 
@@ -216,7 +242,9 @@ The build prints one output path for the symlink farm:
 ```
 
 Each fixed-output derivation fetches one manifest entry with
-`hoard fetch --manifest <manifest> --file <path> --out $out`. It sets `HOME`,
+`hoard fetch --manifest <manifest> --file <path> --out $out`. The helper reads
+the manifest at evaluation time and passes its JSON into the build as a file,
+so the derivation does not depend on the manifest store path. It sets `HOME`,
 `XDG_CACHE_HOME`, and `HOARD_STORE` inside the build directory, forwards
 `HF_TOKEN` as an impure environment variable, and relies on Nix to check the
 declared hash before the bytes enter the store. The first build of a file needs
@@ -226,13 +254,15 @@ network access; later builds substitute the same store path.
 
 Nix fixed-output derivations accept `sha256` and `sha512`, and manifest v1
 records the source `sha256`, so each file maps to one FOD without a new hash
-format. The FODs use `outputHashMode = "flat"`: the store path holds the file
-bytes, not a directory or a NAR wrapper. That gives three properties:
+format. The helper converts the manifest hex digest to SRI with
+`builtins.convertHash` and sets `outputHashMode = "flat"`: the store path holds
+the file bytes, not a directory or a NAR wrapper. That gives three properties:
 
 - The store path name is deterministic: `hoard-<first 12 characters of
   sha256>-<basename>`.
 - `hoard store` can reproduce the same path with
-  `nix-store --add-fixed sha256`, which is what the round-trip check compares.
+  `nix-store --add-fixed sha256`, so the CLI and the Nix helper name one file
+  identically.
 - Nix caches and substitutes each file on its own. A set of 3 shards is 3
   FODs, not one recursive derivation that has to re-download when one file
   changes.
@@ -272,7 +302,9 @@ paths and prints `round-trip ok: <path>` when they match.
 | Situation | Result |
 | --- | --- |
 | Truncated HTTP body | Part file kept, next `http` or `auto` run resumes with a Range request. |
-| SHA-256 or BLAKE3 mismatch | Part file removed, command exits 1, no manifest is written. |
+| SHA-256 mismatch | Part file removed, command exits 1. |
+| BLAKE3 mismatch against a manifest | Downloaded file rejected, command exits 1. |
+| No manifest after a failed fetch | A spec fetch writes the manifest only after every selected file verifies. |
 | Source metadata disagrees with the manifest | `--manifest` fails before downloading that file. |
 | Interrupted CAS write | The blob path appears only after a fsynced temporary file is renamed into place. |
 | Interrupted materialization | Destination is replaced by an atomic rename; no partial file appears at the final path. |
@@ -280,7 +312,7 @@ paths and prints `round-trip ok: <path>` when they match.
 | `--offline` with a missing file | Command exits 1 and names every missing path. |
 | Transient 429, 5xx, connection, or timeout | Retried 3 times with backoff, then reported as an error. |
 | Redirect to a host outside the allow-list | Request fails; the response is not followed. |
-| Fixture expires or moves | The resolve to a commit and the pinned revision in the manifest keep the expected bytes checkable. |
+| Branch or tag moves | Fetch resolves the ref to a commit sha first, so the recorded revision does not follow the branch. |
 
 A failed fetch never writes a manifest. The manifest file appears only after
 every selected file has verified, and the write itself is atomic.

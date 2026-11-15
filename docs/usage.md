@@ -29,8 +29,8 @@ nix build .#default
 The crates are not published to crates.io in 0.1.0. `hoard-gguf`, `hoard hash`,
 and the `hoard manifest` commands are read-only and offline. `hoard fetch` is
 the one command that uses the network: it downloads files into the CAS, verifies
-both digests, and writes a canonical manifest. `hoard verify`, `hoard store`,
-and `hoard push` work from the CAS and local files.
+both digests, and for a spec writes a canonical manifest. `hoard verify` and
+`hoard store` read the CAS, and `hoard push` hands the CAS paths to `nix copy`.
 
 ## Exit codes
 
@@ -38,7 +38,7 @@ Both binaries share one exit-code convention:
 
 | Code | Meaning |
 | --- | --- |
-| 0 | Success. Warnings from `inspect` do not affect the exit code. `fetch` prints progress to stderr and exits 0 after every file verifies and the manifest is written. |
+| 0 | Success. Warnings from `inspect` do not affect the exit code. `fetch` prints progress to stderr and exits 0 after every selected file verifies (and, for a spec, after the manifest is written). |
 | 1 | Command failure: unreadable file, malformed GGUF or manifest, digest or size mismatch, missing CAS entry, failed verification, failed `nix-store` or `nix copy`, or I/O error. Errors are printed to stderr as `error: ...`. |
 | 2 | Usage error: unknown command or option, missing required argument, or conflicting arguments (clap). |
 
@@ -290,9 +290,9 @@ before it lists files, so a generated manifest pins a commit.
 | `SPEC` | Repository and revision as `hf:owner/name[@rev]`. Conflicts with `--manifest`. |
 | `--manifest <FILE>` | Fetch the files listed in an existing manifest instead of a spec. Conflicts with `SPEC`. |
 | `--file <PATH>` | Repository file to fetch. Repeat for several files. Required with a spec; with `--manifest`, the default is every file in the manifest. |
-| `--group <GROUP>` | Group written to the weights entries of a new manifest. Ignored when the manifest already exists. |
+| `--group <GROUP>` | Group written to the weights entries of a new manifest. Ignored with `--manifest`. |
 | `--repo-type <REPO_TYPE>` | Repository kind for a spec: `model` (default), `dataset`, or `space`. |
-| `--role <ROLE>` | Role override for every selected file in a new manifest: `weights`, `mmproj`, `mtp`, `tokenizer`, `config`, or `other`. Ignored when the manifest already exists. |
+| `--role <ROLE>` | Role override for every selected file in a new manifest: `weights`, `mmproj`, `mtp`, `tokenizer`, `config`, or `other`. Ignored with `--manifest`. |
 | `--manifest-out <FILE>` | Path for the generated manifest. Required with a spec; rejected with `--manifest`. |
 | `--out <DIR>` | Materialize verified files under this directory. With `--manifest --file` selecting one file, the path can name a file instead. |
 | `--transport <TRANSPORT>` | Download transport: `auto` (default), `xet`, or `http`. |
