@@ -11,10 +11,13 @@
 
   packages = with pkgs; [
     cacert
+    cmake
     curl
     git
     jq
     nix
+    perl
+    pkg-config
     python3
     shellcheck
   ];
@@ -23,6 +26,7 @@
     CARGO_HOME = "${config.devenv.root}/.cargo-home";
     CARGO_TERM_COLOR = "always";
     RUST_BACKTRACE = "1";
+    SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
   };
 
   scripts = {

@@ -49,6 +49,16 @@
           # when it is absent, which is the case inside the Nix sandbox.
           cargoLock.lockFile = ./Cargo.lock;
 
+          # reqwest and hf-xet enable aws-lc-rs through rustls. nixpkgs sets
+          # AWS_LC_SYS_USE_SYSTEM=1 for Rust builds, so provide the library
+          # instead of letting aws-lc-sys try to find one.
+          nativeBuildInputs = [ pkgs.pkg-config ];
+          buildInputs = [ pkgs.aws-lc ];
+          env = {
+            SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
+            SSL_CERT_DIR = "${pkgs.cacert}/etc/ssl/certs";
+          };
+
           cargoBuildFlags = [ "--workspace" ];
           cargoTestFlags = [ "--workspace" ];
 
@@ -59,8 +69,75 @@
             platforms = platforms.unix;
           };
         };
+      fetchArtifact =
+        {
+          pkgs,
+          hoard,
+          manifest,
+          path,
+        }:
+        let
+          data = builtins.fromJSON (builtins.readFile manifest);
+          matches = builtins.filter (file: file.path == path) data.files;
+          entry =
+            if matches == [ ] then
+              throw "fetchArtifact: ${path} is not in ${toString manifest}"
+            else
+              builtins.head matches;
+          name = "hoard-${builtins.substring 0 12 entry.sha256}-${baseNameOf path}";
+          outputHash = builtins.convertHash {
+            hash = "sha256:${entry.sha256}";
+            toHashFormat = "sri";
+          };
+        in
+        pkgs.stdenvNoCC.mkDerivation {
+          inherit name outputHash;
+          outputHashAlgo = "sha256";
+          outputHashMode = "flat";
+          impureEnvVars = [ "HF_TOKEN" ];
+          nativeBuildInputs = [ pkgs.cacert ];
+          buildCommand = ''
+            export HOME="$TMPDIR"
+            export XDG_CACHE_HOME="$TMPDIR/.cache"
+            export HOARD_STORE="$TMPDIR/hoard-store"
+            export SSL_CERT_FILE="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+            mkdir -p "$(dirname "$out")"
+            ${hoard}/bin/hoard fetch --manifest ${pkgs.lib.escapeShellArg (toString manifest)} --file ${pkgs.lib.escapeShellArg path} --out "$out"
+          '';
+        };
+
+      fetchArtifactSet =
+        {
+          pkgs,
+          hoard,
+          manifest,
+        }:
+        let
+          data = builtins.fromJSON (builtins.readFile manifest);
+          items = map (entry: {
+            inherit (entry) path;
+            artifact = fetchArtifact {
+              inherit pkgs hoard manifest;
+              path = entry.path;
+            };
+          }) data.files;
+          farmName = "hoard-set-${builtins.substring 0 12 (builtins.head data.files).sha256}";
+        in
+        pkgs.runCommand farmName { } ''
+          mkdir -p "$out"
+          ${pkgs.lib.concatMapStringsSep "
+" (item: ''
+            mkdir -p "$out/$(dirname ${pkgs.lib.escapeShellArg item.path})"
+            ln -s ${item.artifact} "$out/${item.path}"
+          '') items}
+        '';
+
     in
     {
+      lib = {
+        inherit fetchArtifact fetchArtifactSet;
+      };
+
       packages = forAllSystems (
         pkgs:
         let

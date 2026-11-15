@@ -4,6 +4,7 @@ members = [
   "crates/hoard-gguf",
   "crates/hoard-core",
   "crates/hoard-cli",
+  "crates/hoard-hf",
 ]
 
 [workspace.package]
@@ -18,14 +19,19 @@ anyhow = "1.0.104"
 blake3 = "1.8.7"
 clap = { version = "4.6.7", features = ["derive"] }
 hex = "0.4.3"
+hf-xet = "1.8.1"
 memmap2 = "0.9.12"
 proptest = "1.12.0"
+reqwest = { version = "0.13.5", default-features = false, features = ["blocking", "json", "rustls"] }
 schemars = "1.2.3"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
 sha2 = "0.10.9"
 tempfile = "3.27.0"
 thiserror = "2.0.21"
+tokio = { version = "1.54.1", features = ["macros", "rt-multi-thread"] }
+url = "2.5.8"
+wiremock = "0.6.5"
 
 [workspace.lints.rust]
 unsafe_code = "deny"

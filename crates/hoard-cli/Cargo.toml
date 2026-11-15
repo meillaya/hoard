@@ -14,7 +14,9 @@ categories = ["command-line-utilities", "development-tools"]
 anyhow.workspace = true
 clap.workspace = true
 hoard-core = { path = "../hoard-core", version = "0.1.0" }
+hoard-hf = { path = "../hoard-hf", version = "0.1.0" }
 serde_json.workspace = true
+tempfile.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

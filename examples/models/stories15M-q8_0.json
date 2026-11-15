@@ -1,0 +1,47 @@
+{
+  "files": [
+    {
+      "blake3": "12e8a5f3fe1581449515b5fa3d0ec2271ed2ec228f984ad78c8c43a47b870294",
+      "group": "q8_0",
+      "path": "tinyllamas/split/stories15M-q8_0-00001-of-00003.gguf",
+      "role": "weights",
+      "sha256": "8a3a74042ae05dda34985dff2d49adf2ee3f9d0fd73b03fa6cc4307c924e4040",
+      "siblings": [
+        "tinyllamas/split/stories15M-q8_0-00002-of-00003.gguf",
+        "tinyllamas/split/stories15M-q8_0-00003-of-00003.gguf"
+      ],
+      "size": 10517152
+    },
+    {
+      "blake3": "65d61bd327eb26bc939cf2783adf95d28ec1d17dc22265919c20c3bc7b3ea6d8",
+      "group": "q8_0",
+      "path": "tinyllamas/split/stories15M-q8_0-00002-of-00003.gguf",
+      "role": "weights",
+      "sha256": "4a70d35fdd275b054c29979da9c5d27e7045f011fdf11f736a652a03b1ffb355",
+      "siblings": [
+        "tinyllamas/split/stories15M-q8_0-00001-of-00003.gguf",
+        "tinyllamas/split/stories15M-q8_0-00003-of-00003.gguf"
+      ],
+      "size": 10381216
+    },
+    {
+      "blake3": "098cb4043df7175cee5d46ede19f37ce35e86412d4ffcb13c6ad1f39531dd5db",
+      "group": "q8_0",
+      "path": "tinyllamas/split/stories15M-q8_0-00003-of-00003.gguf",
+      "role": "weights",
+      "sha256": "b2d72a3315df3e2834be32adbbc737ca02cc443125e26bbc2cfe8695ec3814bc",
+      "siblings": [
+        "tinyllamas/split/stories15M-q8_0-00001-of-00003.gguf",
+        "tinyllamas/split/stories15M-q8_0-00002-of-00003.gguf"
+      ],
+      "size": 5773312
+    }
+  ],
+  "schema": 1,
+  "source": {
+    "kind": "huggingface",
+    "repo": "ggml-org/models",
+    "repoType": "model",
+    "revision": "499bc8821c6b12b4e53c5bffcb21ec206f212d81"
+  }
+}

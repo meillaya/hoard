@@ -55,17 +55,23 @@
 //! - [`canonical`]: the canonical JSON encoding.
 //! - [`hash`]: streaming SHA-256/BLAKE3 helpers and digest types.
 //! - [`schema`]: the JSON Schema for manifest v1.
+//! - [`cas`]: the content-addressed store for verified file bytes.
+//! - [`artifact`]: the manifest builder that joins a source listing, a
+//!   selection, and CAS entries.
 //! - [`error`]: the shared error type.
 
 #![deny(missing_docs)]
 
+pub mod artifact;
 pub mod canonical;
+pub mod cas;
 pub mod error;
 pub mod hash;
 pub mod manifest;
 pub mod schema;
 pub mod validate;
 
+pub use cas::{Entry, Store};
 pub use error::{Error, Result};
 pub use hash::{Blake3Digest, Hash32};
 pub use manifest::{FileEntry, Manifest, RepoType, Role, SCHEMA_VERSION, Source, SourceKind};
