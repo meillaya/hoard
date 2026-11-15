@@ -6,6 +6,15 @@ report, and tests that use the downloaded real corpus when it is present.
 
 ## Running
 
+Primary path, from the repository shell:
+
+```sh
+devenv test
+```
+
+That runs formatting, clippy, and the full test suite. The same suite with a
+system or rustup Rust 1.99.1:
+
 ```sh
 CARGO_HOME="$PWD/.cargo-home" cargo test --workspace --all-features
 ```

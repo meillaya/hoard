@@ -1,5 +1,8 @@
 /.cargo-home/
 /.cache-nix/
+/.devenv/
+/.home/
+/.local/
 /target/
 /result
 /result-*
@@ -7,3 +10,5 @@
 /.cache/
 /fixtures/real/
 /.scratch/
+/.devenv-runtime/
+/.devenv-*/

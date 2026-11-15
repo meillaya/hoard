@@ -2,13 +2,16 @@
 
 ## Install and invoke
 
-Build from a checkout:
+Development builds run inside the repository shell:
 
 ```sh
+devenv shell
 cargo build --workspace --release
 ./target/release/hoard --version
 ./target/release/hoard-gguf --version
 ```
+
+A system or rustup Rust 1.99.1 with plain `cargo` is the secondary path.
 
 ```text
 hoard 0.1.0

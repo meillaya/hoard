@@ -9,7 +9,9 @@ committed schemas and fixtures, and build with Nix.
 | --- | --- | --- |
 | Rust | 1.99.1 | `rust-toolchain.toml`, `dtolnay/rust-toolchain@1.99.1` in CI |
 | rustfmt, clippy | 1.99.1 components | `rust-toolchain.toml` |
-| cargo | 1.99.x | Rust toolchain; the Nix devShell follows nixpkgs |
+| cargo | 1.99.x | Rust toolchain; the Nix package follows nixpkgs |
+| devenv | 2.4.0 | `devenv.yaml`, `devenv.lock`; the flake delegates to `devenv.nix` |
+| nixpkgs | `d5cc6833999746cffdfe0598f7bc801a57b887a9` | `flake.lock`; devenv and rust-overlay follow it |
 | actionlint, shellcheck | latest from nixpkgs | actionlint workflow |
 
 The workspace uses edition 2024 and resolver 3. The root `Cargo.toml` pins
@@ -19,38 +21,57 @@ without agreement: a new dependency changes the supply-chain story in
 
 ## Environment
 
-With rustup installed, `rust-toolchain.toml` selects 1.99.1 automatically:
+`devenv.nix` defines the primary development shell. It reads
+`rust-toolchain.toml` through rust-overlay, so the shell uses Rust 1.99.1.
+
+```sh
+devenv shell      # or: direnv allow
+devenv test       # formatting, clippy, and tests
+```
+
+`nix develop --impure` enters the same shell through the flake. The `--impure`
+flag is required because devenv needs the working directory.
+
+The shell exposes scripts: `test`, `check`, `fixtures`, `xet-live`, `roundtrip`,
+and `bench`.
+
+A system or rustup Rust 1.99.1 with plain cargo is the secondary path:
 
 ```sh
 cargo build --workspace
 cargo test --workspace --all-features
 ```
 
-The Nix flake provides the same tools without rustup:
-
-```sh
-nix develop
-cargo --version
-```
-
-`.envrc` contains `use flake`, so direnv enters the same shell automatically.
+`.envrc` contains `use devenv`.
 
 ### Sandboxed or unprivileged environments
 
-Some agent sandboxes mount the home directory read-only. If `~/.cargo` or
-`~/.cache` is read-only, keep the caches inside the checkout:
+Some agent sandboxes mount the home directory read-only. The devenv shell keeps
+`CARGO_HOME` inside the checkout. Point the remaining caches at the checkout as
+well:
 
 ```sh
-export CARGO_HOME="$PWD/.cargo-home"     # cargo registry and build cache
-export XDG_CACHE_HOME="$PWD/.cache-nix"  # nix fetcher cache
+export XDG_RUNTIME_DIR="$PWD/.devenv-runtime"
+export XDG_CACHE_HOME="$PWD/.devenv-cache"
+export XDG_STATE_HOME="$PWD/.devenv-state"
+export XDG_DATA_HOME="$PWD/.devenv-data"
+export XDG_CONFIG_HOME="$PWD/.devenv-config"
 ```
 
-Both directories are gitignored. Nix writes build results to the Nix store
-through the daemon; only the fetcher and eval caches need to be writable.
+Use `XDG_CACHE_HOME="$PWD/.cache-nix"` for Nix commands if the Nix fetcher cache
+is read-only too. All directories are gitignored. Nix writes build results to
+the Nix store through the daemon; only the fetcher and eval caches need writable
+paths.
 
 ## Checks
 
 Run what CI runs:
+
+```sh
+devenv test
+```
+
+The same checks with plain cargo:
 
 ```sh
 cargo fmt --all --check
@@ -101,8 +122,9 @@ builder and regenerate. Real model files are never committed.
 ## Nix
 
 ```sh
+devenv shell                    # primary development shell
 nix flake show --all-systems   # evaluate every output without building
-nix develop --command cargo --version
+nix develop --impure --command cargo --version
 nix flake check                # builds the package check
 nix build .#default            # builds both binaries
 nix run .# -- --version

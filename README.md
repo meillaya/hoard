@@ -98,13 +98,26 @@ everything else. Caps and warning codes are listed in
 contract](docs/inspect.md). The manifest rules, canonical encoding, and trust
 model are in [manifest v1](docs/manifest.md).
 
+## Develop
+
+`devenv.nix` defines the development shell. Use it as the primary environment:
+
+```sh
+devenv shell
+devenv test
+```
+
+`nix develop --impure` enters the same shell through the flake. A system or
+rustup Rust 1.99.1 with plain `cargo` is the secondary path. See
+[development](docs/development.md).
+
 ## Build with Nix
 
 The flake provides a devShell, both binaries, apps, checks, and a formatter for
 `x86_64-linux`, `aarch64-linux`, and `aarch64-darwin`:
 
 ```sh
-nix develop
+nix develop --impure
 nix build .#default
 ./result/bin/hoard-gguf inspect fixtures/real/stories260K.gguf
 ```
@@ -115,7 +128,9 @@ nixpkgs 26.11 dropped it. Dependencies come from the committed `Cargo.lock` via
 
 ## Requirements
 
-- Rust 1.99.1, selected by `rust-toolchain.toml`, with edition 2024.
+- Primary development environment is `devenv shell`; it reads
+  `rust-toolchain.toml` through rust-overlay and uses Rust 1.99.1.
+- A system or rustup Rust 1.99.1 with plain `cargo` is the secondary path.
 - Linux x86_64 is the tested platform. The flake evaluates `aarch64-linux` and
   `aarch64-darwin`; Windows is untested.
 - Cargo fetches dependencies once. The binaries and tests make no network

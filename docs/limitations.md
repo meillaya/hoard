@@ -116,6 +116,10 @@ Not shipped:
 
 ## Platforms
 
+- Development shell coverage: devenv is validated on `x86_64-linux`. The
+  `aarch64-linux` and `aarch64-darwin` flake outputs are evaluated, not built
+  locally. A system or rustup Rust 1.99.1 remains a supported secondary path.
+
 - Linux x86_64 is the tested platform. The repository is developed and tested
   on `x86_64-linux` only. The flake also exposes `aarch64-linux` and
   `aarch64-darwin` outputs because they evaluate, but they are not exercised

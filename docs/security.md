@@ -83,6 +83,8 @@ lives as long as the `GgufFile`; all parsing works on a borrowed `&[u8]`.
   (`rust-toolchain.toml`, and `dtolnay/rust-toolchain@1.99.1`).
 - `cargo-deny` runs in CI with advisories, bans, licenses, and sources checks
   ([`deny.toml`](../deny.toml)). Dependencies must come from crates.io.
+- `devenv` and `rust-overlay` are pinned by full revisions in `flake.lock` and
+  `devenv.lock`; the development shell is not a floating environment.
 - `flake.lock` pins nixpkgs, and the Nix package resolves dependencies through
   `Cargo.lock` (`importCargoLock`), so the Nix build uses exactly the locked
   crates, each verified against its lockfile checksum.

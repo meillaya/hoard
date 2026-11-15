@@ -17,6 +17,8 @@ documentation, so "P2" means "transport" rather than "second half of the work".
 - Three-crate workspace (`hoard-gguf`, `hoard-core`, `hoard-cli`), edition 2024,
   workspace lints (`unsafe_code` denied, `missing_docs` denied per crate).
 - Pinned toolchain (`rust-toolchain.toml`), committed `Cargo.lock`, Apache-2.0.
+- `devenv.nix` primary development shell; the flake devShell delegates to it;
+  CI runs the shell as a primary job and plain cargo as a secondary job.
 - GitHub Actions: fmt/clippy/test/doc, Nix, cargo-deny, actionlint.
 - Nix flake with devShell, package, apps, checks, formatter; pinned
   `flake.lock`.

@@ -1,14 +1,30 @@
 {
   description = "hoard - verifiable, content-addressed artifacts for large model files";
 
-  # nixpkgs is locked to a nixos-unstable revision in flake.lock. Updating it
-  # resolves the branch through the GitHub API, which is rate-limited in some
-  # sandboxes and CI; if that fails, pin a full commit rev here deliberately
-  # and re-run `nix flake lock`.
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  # `devenv.nix` is the single source for the development shell. devenv and
+  # rust-overlay follow the project nixpkgs, so the package, `devenv shell`,
+  # and `nix develop` build the same tools. Full revisions keep lock
+  # resolution off the GitHub API.
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/d5cc6833999746cffdfe0598f7bc801a57b887a9";
+    devenv = {
+      url = "github:cachix/devenv/b904dcb51fe48c30db250038241507f60752f222";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.rust-overlay.follows = "rust-overlay";
+    };
+    rust-overlay = {
+      url = "github:oxalica/rust-overlay/67f1944c7c99d8dbb57fa3d83043bc0a92cbcc56";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+  };
 
   outputs =
-    { self, nixpkgs }:
+    {
+      self,
+      nixpkgs,
+      devenv,
+      ...
+    }@inputs:
     let
       systems = [
         "x86_64-linux"
@@ -57,20 +73,22 @@
       );
 
       devShells = forAllSystems (pkgs: {
-        default = pkgs.mkShell {
-          packages = with pkgs; [
-            cargo
-            rustc
-            rustfmt
-            clippy
-            git
-            curl
-            cacert
-            jq
-            shellcheck
+        default = devenv.lib.mkShell {
+          inherit inputs pkgs;
+          modules = [
+            # Flakes evaluate purely by default, where PWD is not available.
+            # Use `--impure` for the real working directory; the fallback lets
+            # `nix flake check` evaluate the shell without failing.
+            ({ lib, ... }: {
+              devenv.root = lib.mkForce (
+                let
+                  pwd = builtins.getEnv "PWD";
+                in
+                if pwd != "" then pwd else "/tmp/hoard-devenv"
+              );
+            })
+            ./devenv.nix
           ];
-
-          RUST_BACKTRACE = "1";
         };
       });
 
