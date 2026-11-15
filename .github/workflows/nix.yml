@@ -1,0 +1,48 @@
+name: Nix
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  flake:
+    name: Nix / linux
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: Flake check
+        run: nix flake check
+
+      - name: Build the package
+        run: nix build .#default
+
+      - name: Check the packaged CLIs
+        run: |
+          test -x result/bin/hoard
+          test -x result/bin/hoard-gguf
+          ./result/bin/hoard --version
+          ./result/bin/hoard-gguf --version
+
+      - name: Fetch real fixtures
+        run: bash scripts/fetch-fixtures.sh
+
+      - name: Smoke-test inspect on a real model
+        run: |
+          ./result/bin/hoard-gguf inspect fixtures/real/stories260K.gguf --json \
+            > inspect.json
+          jq -e '.tensors.count == 48' inspect.json

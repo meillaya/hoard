@@ -1,0 +1,5 @@
+* text=auto eol=lf
+Cargo.lock text
+*.gguf binary
+schemas/*.json linguist-generated=true
+crates/hoard-gguf/tests/golden/*.json linguist-generated=true

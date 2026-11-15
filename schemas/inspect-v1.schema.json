@@ -1,0 +1,482 @@
+{
+  "$defs": {
+    "ArrayReport": {
+      "description": "Details of an array metadata value.\n\n`sample` holds up to three scalar elements; nested arrays are not recursed\ninto, so their `sample` is empty and `sample_truncated` is `true` whenever\nthe nested array has elements.",
+      "properties": {
+        "element_type": {
+          "description": "Element type name (`\"string\"`, `\"f32\"`, `\"array\"`, ...).",
+          "type": "string"
+        },
+        "length": {
+          "description": "Number of elements in the array.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "sample": {
+          "description": "Up to three leading scalar elements.",
+          "items": true,
+          "type": "array"
+        },
+        "sample_truncated": {
+          "description": "Whether `sample` omits elements that are present in the array.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "element_type",
+        "length",
+        "sample",
+        "sample_truncated"
+      ],
+      "type": "object"
+    },
+    "ByteOrder": {
+      "description": "Byte order of a GGUF file.\n\nOnly little-endian files are supported, so the enum currently has a single\nvariant; it exists so the inspect JSON can state the byte order explicitly\nand so a future big-endian reader can extend it.",
+      "oneOf": [
+        {
+          "const": "little",
+          "description": "Little-endian, the only byte order `hoard-gguf` accepts.",
+          "type": "string"
+        }
+      ]
+    },
+    "FileReport": {
+      "description": "File-level facts from the header and the computed data section start.",
+      "properties": {
+        "alignment": {
+          "description": "Tensor data alignment in bytes.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "byte_order": {
+          "$ref": "#/$defs/ByteOrder",
+          "description": "Byte order, always `\"little\"`."
+        },
+        "data_start": {
+          "description": "Absolute file offset where the tensor data section starts.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "path": {
+          "description": "Path the file was read from, or `null` when inspecting a byte buffer.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "size": {
+          "description": "File size in bytes.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "version": {
+          "description": "GGUF version (2 or 3).",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "size",
+        "version",
+        "byte_order",
+        "alignment",
+        "data_start"
+      ],
+      "type": "object"
+    },
+    "MemoryReport": {
+      "description": "Byte accounting for the file.",
+      "properties": {
+        "file_bytes": {
+          "description": "Total file size.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "overhead_bytes": {
+          "description": "Bytes that are not tensor data (`file_bytes - tensor_bytes`).",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "padding_bytes": {
+          "description": "Alignment gaps between tensors, including before the first tensor.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "tensor_bytes": {
+          "description": "Sum of the known tensor data sizes.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "tensor_bytes",
+        "file_bytes",
+        "overhead_bytes",
+        "padding_bytes"
+      ],
+      "type": "object"
+    },
+    "MetadataEntryReport": {
+      "description": "One metadata entry.\n\nScalar entries serialize as `{\"key\": ..., \"type\": \"u32\", \"value\": ...}`;\narray entries as\n`{\"key\": ..., \"type\": \"array\", \"array\": {...}}`.",
+      "properties": {
+        "array": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ArrayReport"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Array details; omitted for scalar entries."
+        },
+        "key": {
+          "description": "Metadata key.",
+          "type": "string"
+        },
+        "type": {
+          "description": "Value type name (`\"u8\"`, `\"string\"`, `\"array\"`, ...).",
+          "type": "string"
+        },
+        "value": {
+          "description": "The value for scalar entries; omitted for arrays."
+        }
+      },
+      "required": [
+        "key",
+        "type"
+      ],
+      "type": "object"
+    },
+    "MetadataReport": {
+      "description": "Metadata overview: total count plus one entry per key/value pair.",
+      "properties": {
+        "count": {
+          "description": "Number of metadata entries.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "entries": {
+          "description": "Entries, in file order.",
+          "items": {
+            "$ref": "#/$defs/MetadataEntryReport"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "count",
+        "entries"
+      ],
+      "type": "object"
+    },
+    "ModelReport": {
+      "description": "Model-level metadata extracted from well-known keys.",
+      "properties": {
+        "architecture": {
+          "description": "`general.architecture`, or `null` when absent.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "description": "`general.name`, or `null` when absent.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "quantization_version": {
+          "description": "`general.quantization_version`, or `null` when absent.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "QuantMixEntry": {
+      "description": "One quantization type in the `quant_mix` summary.",
+      "properties": {
+        "bytes": {
+          "description": "Sum of the data sizes of those tensors.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "elements": {
+          "description": "Sum of the element counts of those tensors.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "percent": {
+          "description": "Share of the known tensor bytes, in percent with two decimals.",
+          "format": "double",
+          "type": "number"
+        },
+        "tensors": {
+          "description": "Number of tensors with this type.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "type": {
+          "description": "Quantization type name.",
+          "type": "string"
+        },
+        "type_id": {
+          "description": "Numeric `ggml_type` id.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "type",
+        "type_id",
+        "tensors",
+        "elements",
+        "bytes",
+        "percent"
+      ],
+      "type": "object"
+    },
+    "SplitReport": {
+      "description": "Split-model information from the `split.*` metadata keys.",
+      "properties": {
+        "count": {
+          "description": "Total number of parts.",
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "no": {
+          "description": "Zero-based index of this part.",
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "tensors_count": {
+          "description": "Total tensor count across all parts.",
+          "format": "int32",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "no",
+        "count",
+        "tensors_count"
+      ],
+      "type": "object"
+    },
+    "TensorReport": {
+      "description": "One tensor entry.",
+      "properties": {
+        "bytes": {
+          "description": "Data size in bytes, or `null` when the quantization type is unknown.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "elements": {
+          "description": "Total element count.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "file_offset": {
+          "description": "Absolute file offset of the tensor data.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "name": {
+          "description": "Tensor name.",
+          "type": "string"
+        },
+        "offset": {
+          "description": "Offset relative to `file.data_start`.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "shape": {
+          "description": "Dimensions, innermost first.",
+          "items": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "type": {
+          "description": "Quantization type name (`\"F32\"`, `\"Q8_0\"`, ...) or `\"unknown\"`.",
+          "type": "string"
+        },
+        "type_id": {
+          "description": "Numeric `ggml_type` id.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "name",
+        "type",
+        "type_id",
+        "shape",
+        "elements",
+        "offset",
+        "file_offset"
+      ],
+      "type": "object"
+    },
+    "TensorsReport": {
+      "description": "Tensor overview: counts plus one entry per tensor.",
+      "properties": {
+        "bytes_known": {
+          "description": "Whether every tensor's data size is known.",
+          "type": "boolean"
+        },
+        "count": {
+          "description": "Number of tensors.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "entries": {
+          "description": "Tensor entries, sorted by offset then name.",
+          "items": {
+            "$ref": "#/$defs/TensorReport"
+          },
+          "type": "array"
+        },
+        "total_bytes": {
+          "description": "Sum of the data sizes of tensors with known quantization types.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "unknown_types": {
+          "description": "Number of tensors with an unknown quantization type.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "count",
+        "total_bytes",
+        "bytes_known",
+        "unknown_types",
+        "entries"
+      ],
+      "type": "object"
+    },
+    "WarningReport": {
+      "description": "One non-fatal parser diagnostic.",
+      "properties": {
+        "code": {
+          "description": "Stable kebab-case warning code.",
+          "type": "string"
+        },
+        "message": {
+          "description": "Human-readable message.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "The complete `inspect` report for one GGUF file.",
+  "properties": {
+    "file": {
+      "$ref": "#/$defs/FileReport",
+      "description": "File-level facts."
+    },
+    "memory": {
+      "$ref": "#/$defs/MemoryReport",
+      "description": "Byte accounting for the file."
+    },
+    "metadata": {
+      "$ref": "#/$defs/MetadataReport",
+      "description": "All metadata entries, in file order."
+    },
+    "model": {
+      "$ref": "#/$defs/ModelReport",
+      "description": "Model-level metadata."
+    },
+    "quant_mix": {
+      "description": "Per-quantization-type summary, largest first.",
+      "items": {
+        "$ref": "#/$defs/QuantMixEntry"
+      },
+      "type": "array"
+    },
+    "schema": {
+      "description": "Schema version, always [`SCHEMA_VERSION`] (currently `1`).",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "split": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SplitReport"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Split information, or `null` when the file is not part of a split model."
+    },
+    "tensors": {
+      "$ref": "#/$defs/TensorsReport",
+      "description": "Tensor infos, sorted by offset then name."
+    },
+    "warnings": {
+      "description": "Non-fatal diagnostics, in parser emission order.",
+      "items": {
+        "$ref": "#/$defs/WarningReport"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema",
+    "file",
+    "model",
+    "metadata",
+    "tensors",
+    "quant_mix",
+    "memory",
+    "warnings"
+  ],
+  "title": "InspectReport",
+  "type": "object"
+}

@@ -1,0 +1,47 @@
+{
+  "files": [
+    {
+      "blake3": "0000000000000000000000000000000000000000000000000000000000000000",
+      "path": "config.json",
+      "role": "config",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "size": 123
+    },
+    {
+      "blake3": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "path": "tokenizer/tokenizer.json",
+      "role": "tokenizer",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "size": 42
+    },
+    {
+      "blake3": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "group": "stories",
+      "path": "weights/part-1.gguf",
+      "role": "weights",
+      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "siblings": [
+        "weights/part-2.gguf"
+      ],
+      "size": 1048576
+    },
+    {
+      "blake3": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "group": "stories",
+      "path": "weights/part-2.gguf",
+      "role": "weights",
+      "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "siblings": [
+        "weights/part-1.gguf"
+      ],
+      "size": 1048576
+    }
+  ],
+  "schema": 1,
+  "source": {
+    "kind": "huggingface",
+    "repo": "example/synthetic-artifacts",
+    "repoType": "model",
+    "revision": "0123456789abcdef0123456789abcdef01234567"
+  }
+}

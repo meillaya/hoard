@@ -1,0 +1,27 @@
+[package]
+name = "hoard-cli"
+description = "hoard: artifact pipeline CLI for large model files (manifest and hashing commands in 0.1.0)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+readme = "README.md"
+keywords = ["nix", "huggingface", "gguf", "artifacts", "cli"]
+categories = ["command-line-utilities", "development-tools"]
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+hoard-core = { path = "../hoard-core", version = "0.1.0" }
+serde_json.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[[bin]]
+name = "hoard"
+path = "src/bin/hoard.rs"
+
+[lints]
+workspace = true

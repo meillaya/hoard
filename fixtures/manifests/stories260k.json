@@ -1,0 +1,18 @@
+{
+  "files": [
+    {
+      "blake3": "1b2a49c52e28947a42c0b93606e1cd4554dc97f046f37fb292fbaa3517acdcc0",
+      "path": "tinyllamas/stories260K.gguf",
+      "role": "weights",
+      "sha256": "270cba1bd5109f42d03350f60406024560464db173c0e387d91f0426d3bd256d",
+      "size": 1185376
+    }
+  ],
+  "schema": 1,
+  "source": {
+    "kind": "huggingface",
+    "repo": "ggml-org/models",
+    "repoType": "model",
+    "revision": "499bc8821c6b12b4e53c5bffcb21ec206f212d81"
+  }
+}

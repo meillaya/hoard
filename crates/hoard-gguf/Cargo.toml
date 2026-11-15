@@ -1,0 +1,37 @@
+[package]
+name = "hoard-gguf"
+description = "Strict, zero-copy GGUF parser and inspector for llama.cpp model files"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+readme = "README.md"
+keywords = ["gguf", "llama", "quantization", "mmap", "parser"]
+categories = ["parsing", "encoding", "machine-learning"]
+
+[features]
+default = ["cli"]
+cli = ["dep:anyhow", "dep:clap"]
+testing = []
+
+[dependencies]
+anyhow = { workspace = true, optional = true }
+clap = { workspace = true, optional = true }
+memmap2.workspace = true
+schemars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+tempfile.workspace = true
+
+[[bin]]
+name = "hoard-gguf"
+path = "src/bin/hoard-gguf.rs"
+required-features = ["cli"]
+
+[lints]
+workspace = true

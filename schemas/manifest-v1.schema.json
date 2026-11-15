@@ -1,0 +1,185 @@
+{
+  "$defs": {
+    "FileEntry": {
+      "additionalProperties": false,
+      "description": "One file in a manifest.",
+      "properties": {
+        "blake3": {
+          "description": "BLAKE3 of the file contents: the hoard content-addressed-storage digest.",
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "group": {
+          "description": "Optional grouping key shared by related shards; allowed on `weights`,\n`mmproj`, and `mtp` files only.",
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "path": {
+          "description": "POSIX-style relative path inside the artifact set, for example\n`tinyllamas/stories260K.gguf`.\n\nMust be non-empty, at most 1024 bytes, use `/` separators, and must not\nbe absolute or contain `.`, `..`, or empty segments.",
+          "maxLength": 1024,
+          "type": "string"
+        },
+        "role": {
+          "$ref": "#/$defs/Role",
+          "description": "What the file is for."
+        },
+        "sha256": {
+          "description": "SHA-256 of the file contents, as published by the source (the Hugging\nFace LFS oid).",
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "siblings": {
+          "description": "Other weights files this file ships with, for example other shards.\n\nOnly allowed on `weights` files. References must be sorted and must not\ninclude the file itself; every reference must exist in `files`, point at\na `weights` file in the same group, and be symmetric.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "size": {
+          "description": "File size in bytes, which must be greater than zero.",
+          "format": "uint64",
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "path",
+        "role",
+        "size",
+        "sha256",
+        "blake3"
+      ],
+      "type": "object"
+    },
+    "RepoType": {
+      "description": "The Hugging Face repository type.",
+      "oneOf": [
+        {
+          "const": "model",
+          "description": "A model repository.",
+          "type": "string"
+        },
+        {
+          "const": "dataset",
+          "description": "A dataset repository.",
+          "type": "string"
+        },
+        {
+          "const": "space",
+          "description": "A Space repository.",
+          "type": "string"
+        }
+      ]
+    },
+    "Role": {
+      "description": "The role of a file in an artifact set.",
+      "oneOf": [
+        {
+          "const": "weights",
+          "description": "Model weights; the file a runtime actually loads.",
+          "type": "string"
+        },
+        {
+          "const": "mmproj",
+          "description": "Multimodal projection weights paired with a model.",
+          "type": "string"
+        },
+        {
+          "const": "mtp",
+          "description": "Multi-token-prediction (draft) weights.",
+          "type": "string"
+        },
+        {
+          "const": "tokenizer",
+          "description": "Tokenizer definitions.",
+          "type": "string"
+        },
+        {
+          "const": "config",
+          "description": "Model configuration.",
+          "type": "string"
+        },
+        {
+          "const": "other",
+          "description": "Any other supporting file.",
+          "type": "string"
+        }
+      ]
+    },
+    "Source": {
+      "additionalProperties": false,
+      "description": "Where a manifest's files came from.",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/SourceKind",
+          "description": "Source kind. Manifest v1 only supports `\"huggingface\"`."
+        },
+        "repo": {
+          "description": "Hugging Face repository slug, `owner/name`.",
+          "pattern": "^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$",
+          "type": "string"
+        },
+        "repoType": {
+          "$ref": "#/$defs/RepoType",
+          "description": "Hugging Face repository type."
+        },
+        "revision": {
+          "description": "Hugging Face commit sha: 40 lowercase hexadecimal characters.",
+          "pattern": "^[0-9a-f]{40}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "repo",
+        "repoType",
+        "revision"
+      ],
+      "type": "object"
+    },
+    "SourceKind": {
+      "description": "The kind of source a manifest was created from.",
+      "oneOf": [
+        {
+          "const": "huggingface",
+          "description": "A Hugging Face Hub repository.",
+          "type": "string"
+        }
+      ]
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "A hoard manifest: where an artifact set came from and the files in it.\n\nManifests are parsed with [`Manifest::from_json_bytes`] or\n[`Manifest::from_path`], checked with [`Manifest::validate`], and encoded in\ncanonical form with [`Manifest::canonical_bytes`]. Parsing does not\nvalidate; a parsed manifest is only trustworthy after\n[`Manifest::validate`] returns `Ok`.",
+  "properties": {
+    "files": {
+      "description": "The files that make up the artifact set, sorted by `path` in canonical form.",
+      "items": {
+        "$ref": "#/$defs/FileEntry"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "schema": {
+      "description": "Manifest format version. Manifest v1 writes `1` here.",
+      "format": "uint32",
+      "maximum": 1,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "source": {
+      "$ref": "#/$defs/Source",
+      "description": "Origin of the files in this manifest."
+    }
+  },
+  "required": [
+    "schema",
+    "source",
+    "files"
+  ],
+  "title": "Manifest",
+  "type": "object"
+}

@@ -1,0 +1,26 @@
+[package]
+name = "hoard-core"
+description = "Manifest, canonical JSON, validation, and hashing for the hoard artifact layer"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+readme = "README.md"
+keywords = ["manifest", "content-addressed", "blake3", "nix", "model-artifacts"]
+categories = ["filesystem", "encoding"]
+
+[dependencies]
+blake3.workspace = true
+hex.workspace = true
+schemars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true

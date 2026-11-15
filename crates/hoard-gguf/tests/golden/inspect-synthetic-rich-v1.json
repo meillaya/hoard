@@ -1,0 +1,267 @@
+{
+  "schema": 1,
+  "file": {
+    "path": "synthetic-rich.gguf",
+    "size": 132640,
+    "version": 3,
+    "byte_order": "little",
+    "alignment": 64,
+    "data_start": 1088
+  },
+  "model": {
+    "architecture": "llama",
+    "name": "synthetic-rich",
+    "quantization_version": 2
+  },
+  "split": {
+    "no": 1,
+    "count": 2,
+    "tensors_count": 48
+  },
+  "metadata": {
+    "count": 24,
+    "entries": [
+      {
+        "key": "general.architecture",
+        "type": "string",
+        "value": "llama"
+      },
+      {
+        "key": "general.name",
+        "type": "string",
+        "value": "synthetic-rich"
+      },
+      {
+        "key": "general.quantization_version",
+        "type": "u32",
+        "value": 2
+      },
+      {
+        "key": "general.alignment",
+        "type": "u32",
+        "value": 64
+      },
+      {
+        "key": "split.no",
+        "type": "u16",
+        "value": 1
+      },
+      {
+        "key": "split.count",
+        "type": "u16",
+        "value": 2
+      },
+      {
+        "key": "split.tensors.count",
+        "type": "i32",
+        "value": 48
+      },
+      {
+        "key": "test.u8",
+        "type": "u8",
+        "value": 200
+      },
+      {
+        "key": "test.i8",
+        "type": "i8",
+        "value": -100
+      },
+      {
+        "key": "test.u16",
+        "type": "u16",
+        "value": 50000
+      },
+      {
+        "key": "test.i16",
+        "type": "i16",
+        "value": -20000
+      },
+      {
+        "key": "test.u32",
+        "type": "u32",
+        "value": 3000000000
+      },
+      {
+        "key": "test.i32",
+        "type": "i32",
+        "value": -2000000000
+      },
+      {
+        "key": "test.f32",
+        "type": "f32",
+        "value": 0.5
+      },
+      {
+        "key": "test.bool",
+        "type": "bool",
+        "value": true
+      },
+      {
+        "key": "test.string",
+        "type": "string",
+        "value": "hello"
+      },
+      {
+        "key": "test.u64",
+        "type": "u64",
+        "value": 18446744073709551600
+      },
+      {
+        "key": "test.i64",
+        "type": "i64",
+        "value": -9223372036854775808
+      },
+      {
+        "key": "test.f64",
+        "type": "f64",
+        "value": -2.5
+      },
+      {
+        "key": "test.array.string",
+        "type": "array",
+        "array": {
+          "element_type": "string",
+          "length": 5,
+          "sample": [
+            "a",
+            "bb",
+            "ccc"
+          ],
+          "sample_truncated": true
+        }
+      },
+      {
+        "key": "test.array.f32",
+        "type": "array",
+        "array": {
+          "element_type": "f32",
+          "length": 3,
+          "sample": [
+            1.5,
+            -2.5,
+            3.5
+          ],
+          "sample_truncated": false
+        }
+      },
+      {
+        "key": "test.array.i32",
+        "type": "array",
+        "array": {
+          "element_type": "i32",
+          "length": 3,
+          "sample": [
+            -1,
+            0,
+            1
+          ],
+          "sample_truncated": false
+        }
+      },
+      {
+        "key": "test.array.u32",
+        "type": "array",
+        "array": {
+          "element_type": "u32",
+          "length": 3,
+          "sample": [
+            10,
+            20,
+            30
+          ],
+          "sample_truncated": false
+        }
+      },
+      {
+        "key": "test.array.nested",
+        "type": "array",
+        "array": {
+          "element_type": "array",
+          "length": 2,
+          "sample": [],
+          "sample_truncated": true
+        }
+      }
+    ]
+  },
+  "tensors": {
+    "count": 3,
+    "total_bytes": 131496,
+    "bytes_known": true,
+    "unknown_types": 0,
+    "entries": [
+      {
+        "name": "token_embd.weight",
+        "type": "F32",
+        "type_id": 0,
+        "shape": [
+          64,
+          512
+        ],
+        "elements": 32768,
+        "bytes": 131072,
+        "offset": 0,
+        "file_offset": 1088
+      },
+      {
+        "name": "blk.0.attn_q.weight",
+        "type": "Q8_0",
+        "type_id": 8,
+        "shape": [
+          32,
+          4
+        ],
+        "elements": 128,
+        "bytes": 136,
+        "offset": 131072,
+        "file_offset": 132160
+      },
+      {
+        "name": "blk.0.ffn_down.weight",
+        "type": "Q4_K",
+        "type_id": 12,
+        "shape": [
+          256,
+          2
+        ],
+        "elements": 512,
+        "bytes": 288,
+        "offset": 131264,
+        "file_offset": 132352
+      }
+    ]
+  },
+  "quant_mix": [
+    {
+      "type": "F32",
+      "type_id": 0,
+      "tensors": 1,
+      "elements": 32768,
+      "bytes": 131072,
+      "percent": 99.68
+    },
+    {
+      "type": "Q4_K",
+      "type_id": 12,
+      "tensors": 1,
+      "elements": 512,
+      "bytes": 288,
+      "percent": 0.22
+    },
+    {
+      "type": "Q8_0",
+      "type_id": 8,
+      "tensors": 1,
+      "elements": 128,
+      "bytes": 136,
+      "percent": 0.1
+    }
+  ],
+  "memory": {
+    "tensor_bytes": 131496,
+    "file_bytes": 132640,
+    "overhead_bytes": 1144,
+    "padding_bytes": 56
+  },
+  "warnings": []
+}

@@ -1,0 +1,9 @@
+/.cargo-home/
+/.cache-nix/
+/target/
+/result
+/result-*
+/.direnv/
+/.cache/
+/fixtures/real/
+/.scratch/
