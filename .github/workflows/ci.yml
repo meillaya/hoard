@@ -62,6 +62,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: dtolnay/rust-toolchain@1.99.1
+
       - uses: cachix/install-nix-action@v31
         with:
           extra_nix_config: |
