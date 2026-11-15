@@ -15,7 +15,7 @@ hoard 0.1.0
 hoard-gguf 0.1.0
 ```
 
-Or build with Nix (see [development](development.md)):
+Or build with Nix; see [development](development.md):
 
 ```sh
 nix build .#default
@@ -24,12 +24,12 @@ nix build .#default
 ```
 
 The crates are not published to crates.io in 0.1.0. Both binaries are
-read-only: no command writes a model file, edits a manifest in place, or makes
-a network request.
+read-only: they open files and print output. No command writes a model file,
+edits a manifest in place, or makes a network request.
 
 ## Exit codes
 
-Both binaries use the same convention:
+Both binaries share one exit-code convention:
 
 | Code | Meaning |
 | --- | --- |
@@ -37,9 +37,9 @@ Both binaries use the same convention:
 | 1 | Command failure: unreadable file, malformed GGUF, invalid manifest, non-canonical manifest under `--check`, or I/O error. Errors are printed to stderr as `error: ...`. |
 | 2 | Usage error: unknown command or option, missing required argument (clap). |
 
-`--help`/`-h` prints help and `--version`/`-V` prints `<binary> <version>`. There
-are no global options beyond those, no configuration files, and no environment
-variables.
+`--help`/`-h` prints help and `--version`/`-V` prints `<binary> <version>`.
+Both binaries accept no other global options, and hoard reads no configuration
+file or environment variable.
 
 ## `hoard-gguf inspect`
 
@@ -54,9 +54,9 @@ Parses and validates a GGUF file and prints a report.
 | `--json` | Print the frozen inspect JSON (`schema: 1`, two-space indent, trailing newline) instead of the human report. |
 | `--tensors` | Add the full tensor table to the human report. |
 
-The human report summarizes the file, quantization mix, metadata, optional
-tensor table, and memory accounting. Warnings are printed to stderr as
-`warning: <code>: <message>` and do not change the exit code. `--json` is the
+The human report covers the file, quantization mix, metadata, the tensor table
+when requested, and memory accounting. The command prints warnings to stderr as
+`warning: <code>: <message>` and does not change the exit code. `--json` is the
 stable machine interface; the human output is not. See
 [the inspect report](inspect.md) for every field.
 
@@ -84,7 +84,7 @@ metadata (19 keys)
   ...
 ```
 
-`--json` is meant to be piped:
+`--json` is meant to be piped; each command below answers one question:
 
 ```sh
 # How many tensors, and how big are they?
@@ -102,14 +102,14 @@ hoard-gguf inspect model.gguf --json \
   | jq -r '.tensors.entries[] | "\(.name)\t\(.type)\t\(.shape | join("x"))\t@\(.file_offset)"'
 ```
 
-The tensor table is only available in the JSON output and in the human report
-with `--tensors`.
+The JSON output always includes the tensor table. The human report includes it
+only with `--tensors`.
 
 ### Errors
 
 A file that is not GGUF, a truncated file, a big-endian file, or a file that
-violates the caps in [limits and non-goals](limitations.md) fails with exit 1
-and a diagnostic naming the path and the parser error:
+violates the caps in [limits and non-goals](limitations.md) fails with exit 1.
+The diagnostic names the path and the parser error:
 
 ```console
 $ hoard-gguf inspect fixtures/real/stories260K-be.gguf
@@ -125,8 +125,8 @@ hoard-gguf schema
 ```
 
 Prints the inspect JSON Schema (`schema: 1`) to stdout. The output is the
-committed `schemas/inspect-v1.schema.json`; `hoard-gguf schema | diff - schemas/inspect-v1.schema.json`
-exits 0.
+committed `schemas/inspect-v1.schema.json`, so
+`hoard-gguf schema | diff - schemas/inspect-v1.schema.json` exits 0.
 
 ## `hoard hash`
 
@@ -134,7 +134,7 @@ exits 0.
 hoard hash [--json] <FILE>
 ```
 
-Computes two digests of a regular file by streaming it in 1 MiB chunks:
+Computes two digests of a regular file, streaming it in 1 MiB chunks:
 
 | Digest | Role |
 | --- | --- |
@@ -161,13 +161,13 @@ fixtures/real/stories260K.gguf
 }
 ```
 
-Only regular files are accepted; a directory or missing path fails with exit 1.
+`hoard hash` accepts regular files only. A directory or a missing path fails
+with exit 1.
 
 ## `hoard manifest`
 
 The manifest subcommands operate on a manifest v1 JSON file and validate it
-before doing anything else. The format is specified in
-[manifest](manifest.md).
+before doing anything else. [manifest](manifest.md) specifies the format.
 
 ### `hoard manifest validate`
 
@@ -178,8 +178,8 @@ hoard manifest validate <PATH>
 Runs every v1 rule: schema version, source shape, repository slug, revision
 format, file paths (no traversal, no backslashes, no NUL), roles, groups,
 positive sizes, lowercase hex digests, sorting, duplicates, and symmetric
-sibling relations. Prints nothing and exits 0 when valid; prints the first
-error context and exits 1 otherwise.
+sibling relations. A valid manifest prints nothing and exits 0. An invalid one
+prints the first error context and exits 1.
 
 ```console
 $ hoard manifest validate fixtures/manifests/stories260k.json
@@ -193,15 +193,15 @@ $ echo $?
 hoard manifest fmt [--check] <PATH>
 ```
 
-Prints the canonical JSON encoding to stdout. It does not modify the input file;
-to rewrite a file, redirect deliberately:
+Prints the canonical JSON encoding to stdout and leaves the input file alone.
+To rewrite a file, redirect deliberately:
 
 ```sh
 hoard manifest fmt manifest.json > manifest.json.tmp && mv manifest.json.tmp manifest.json
 ```
 
-`--check` writes nothing and exits 1 with a message when the committed bytes are
-not already canonical, which makes it usable as a CI gate:
+`--check` writes nothing and exits 1 with a message when the file is not
+already canonical, which makes it usable as a CI gate:
 
 ```console
 $ hoard manifest fmt fixtures/manifests/stories260k.json --check
@@ -223,15 +223,15 @@ a missing trailing newline. It does not rewrite the manifest.
 hoard manifest hash <PATH>
 ```
 
-Validates the manifest and prints the artifact ID, the BLAKE3 of its canonical
-bytes, with a `blake3:` prefix:
+Prints the artifact ID, the BLAKE3 of the manifest's canonical bytes, with a
+`blake3:` prefix:
 
 ```console
 $ hoard manifest hash fixtures/manifests/stories260k.json
 blake3:56bbfeba5585a228ce8ac25e41d2fba1b16f80e837f93257b61d8fda11bb2421
 ```
 
-An invalid manifest is rejected before hashing, so the printed ID always
+The command validates the manifest before hashing, so the printed ID always
 satisfies the v1 rules.
 
 ### `hoard manifest schema`
@@ -273,8 +273,12 @@ The real fixture manifest pins `tinyllamas/stories260K.gguf` from
 
 ## Limits of the command surface
 
-- No network, no download commands, no cache, no store.
-- No GGUF writer, converter, split, merge, quantizer, or tensor decoder.
-- No manifest creation from a directory or from the network.
-- `inspect` reports metadata and byte sizes, never tensor values.
-- See [limits and non-goals](limitations.md) for the full list.
+The 0.1.0 command surface is offline and read-only. Both binaries read the
+files you name and print output; neither downloads, modifies those files, keeps
+a cache, or stores artifacts. Neither opens a network connection.
+
+There is no GGUF writer, converter, split, merge, quantizer, or tensor decoder.
+Manifests can be validated, formatted, hashed, and schema-printed; hoard does
+not create one from a directory or from the network. `inspect` reports metadata
+and byte sizes and never reads tensor values. See
+[limits and non-goals](limitations.md) for the full list.

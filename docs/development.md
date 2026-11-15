@@ -1,5 +1,8 @@
 # Development
 
+Use this page to set up the toolchain, run the checks CI runs, regenerate the
+committed schemas and fixtures, and build with Nix.
+
 ## Toolchain
 
 | Tool | Version | Source |
@@ -34,16 +37,16 @@ cargo --version
 
 ### Sandboxed or unprivileged environments
 
-If `~/.cargo` or `~/.cache` are read-only (some agent sandboxes mount the home
-directory read-only), keep the caches inside the checkout:
+Some agent sandboxes mount the home directory read-only. If `~/.cargo` or
+`~/.cache` is read-only, keep the caches inside the checkout:
 
 ```sh
 export CARGO_HOME="$PWD/.cargo-home"     # cargo registry and build cache
 export XDG_CACHE_HOME="$PWD/.cache-nix"  # nix fetcher cache
 ```
 
-Both directories are gitignored. Nix itself writes build results to the Nix
-store through the daemon; only the fetcher and eval caches need to be writable.
+Both directories are gitignored. Nix writes build results to the Nix store
+through the daemon; only the fetcher and eval caches need to be writable.
 
 ## Checks
 
@@ -57,13 +60,16 @@ cargo test --workspace --all-features
 RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
 ```
 
+On a passing tree, every command exits 0.
+
 `scripts/fetch-fixtures.sh` downloads the two real GGUF files into
 `fixtures/real/` (gitignored) and verifies their SHA-256. Tests that need them
 skip with a notice when the files are absent, so a clean checkout can test the
 rest without network access. See [fixtures](../fixtures/README.md).
 
-The fixture script and the schema regeneration commands are shellchecked and
-pinned respectively; see [testing](testing.md) for the test layout.
+The actionlint workflow shellchecks `scripts/*.sh`, and `rust-toolchain.toml`
+pins the Rust and cargo versions the commands run under. See
+[testing](testing.md) for the test layout.
 
 ## Schemas
 
@@ -76,9 +82,8 @@ UPDATE_SCHEMAS=1 CARGO_HOME="$PWD/.cargo-home" cargo test -p hoard-gguf --lib sc
 ```
 
 Then run the full suite (without `UPDATE_SCHEMAS`) and commit the changed
-schema files with the type change.
-[`docs/inspect.md`](inspect.md) and [`docs/manifest.md`](manifest.md) describe
-the contracts the schemas encode.
+schema files with the type change. [`docs/inspect.md`](inspect.md) and
+[`docs/manifest.md`](manifest.md) describe the contracts the schemas encode.
 
 ## Synthetic fixtures
 
@@ -106,7 +111,7 @@ nix fmt                        # nixfmt
 
 The flake exposes three systems: `x86_64-linux`, `aarch64-linux`, and
 `aarch64-darwin`. nixpkgs 26.11 dropped `x86_64-darwin`, so Intel macOS has no
-devShell or package output; cargo builds may still work there with a
+devShell or package output. Cargo builds may still work there with a
 system-provided Rust, but the flake does not guarantee it. The supported systems
 are also listed in [limits and non-goals](limitations.md).
 
@@ -150,13 +155,13 @@ on demand. `ci.yml` pins Rust to 1.99.1 with rustfmt and clippy.
 | `fixtures/manifests/` | Committed manifest fixtures (real and synthetic). |
 | `fixtures/real/` | Downloaded real GGUF corpus (gitignored). |
 | `scripts/` | `fetch-fixtures.sh`; future automation. |
-| `docs/` | This documentation set; `design.md` links the rest. |
+| `docs/` | This documentation set. The top-level `README.md` links each document. |
 | `.github/workflows/` | CI. |
 | `flake.nix`, `flake.lock` | Dev shell, package, apps, checks, formatter. |
 
 ## Versioning
 
 The workspace version lives in `[workspace.package].version` in the root
-`Cargo.toml`; `flake.nix` reads it from there. A release updates
-`Cargo.toml`, `Cargo.lock`, and `CHANGELOG.md` together, then tags `v<version>`.
-The binary `--version` output comes from Cargo's package version.
+`Cargo.toml`; `flake.nix` reads it from there. A release updates `Cargo.toml`,
+`Cargo.lock`, and `CHANGELOG.md` together, then tags `v<version>`. The binary
+`--version` output comes from Cargo's package version.

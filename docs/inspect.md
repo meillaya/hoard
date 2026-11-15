@@ -1,13 +1,13 @@
 # Inspect report
 
 `hoard-gguf inspect <path> --json` prints one JSON document describing a GGUF
-file. The document is generated from the `hoard_gguf::InspectReport` Rust types
-with `schemars`, and its shape is frozen at `schema: 1`. The machine-readable
+file. `schemars` generates the document from the `hoard_gguf::InspectReport`
+Rust types, and its shape is frozen at `schema: 1`. The machine-readable
 contract is committed at
 [`schemas/inspect-v1.schema.json`](../schemas/inspect-v1.schema.json).
 
-The report is a *view*, not a decoder: it records tensor metadata and byte
-sizes, never tensor values.
+The report records tensor metadata and byte sizes. It never reads tensor
+values.
 
 ## Parse errors
 
@@ -18,7 +18,7 @@ unknown or wrongly-typed metadata value (including a `general.alignment` that
 is not a `u32`), a boolean payload other than 0/1, a count past its cap, more
 than four tensor dimensions, duplicate tensor names, a quantization block
 mismatch, a tensor or data section past the end of the file, and a zero
-alignment. Non-fatal oddities are reported in `warnings` instead; the full list
+alignment. The parser reports non-fatal oddities in `warnings`; the full list
 is below.
 
 ## Example
@@ -70,8 +70,10 @@ The committed minimal synthetic fixture
 }
 ```
 
-The human-readable output (`inspect` without `--json`) is derived from the same
-report. It is not a stable machine interface.
+The `path` field repeats the argument passed on the command line; this run used
+the `crates/hoard-gguf` directory as its working directory. The human output
+(`inspect` without `--json`) is derived from the same report and is not a stable
+machine interface.
 
 ## `file`
 
@@ -86,8 +88,8 @@ report. It is not a stable machine interface.
 
 ## `model`
 
-Extracted from three well-known metadata keys. Missing or type-mismatched keys
-become `null`; they do not fail the command.
+The report extracts `model` from three well-known metadata keys. A missing or
+wrongly-typed key becomes `null` and does not fail the command.
 
 | Field | Type | Source key |
 | --- | --- | --- |
@@ -97,7 +99,7 @@ become `null`; they do not fail the command.
 
 ## `split`
 
-`null` unless all of `split.no` (`u16`), `split.count` (`u16`), and
+Reports `null` unless all of `split.no` (`u16`), `split.count` (`u16`), and
 `split.tensors.count` (`i32`) are present and well-typed.
 
 | Field | Type | Meaning |
@@ -106,13 +108,13 @@ become `null`; they do not fail the command.
 | `count` | integer | Total number of parts. |
 | `tensors_count` | integer | Total tensor count across all parts. |
 
-Degenerate split metadata never fails the report:
+Split metadata can be degenerate without failing the report:
 
 - Only some of the three keys present: `split` is `null` and the report carries
   a `split-metadata-incomplete` warning.
 - All keys present but one has the wrong value type: `split` is `null` and
-  there is **no** warning. The library's `Gguf::split()` returns a type error
-  for this case, but the inspect report has no warning code for it.
+  there is no warning. The library's `Gguf::split()` returns a type error for
+  this case, but the inspect report has no warning code for it.
 - `split.no >= split.count`: `split` is `null` and the report carries a
   `split-index-out-of-range` warning.
 
@@ -129,7 +131,7 @@ A scalar entry:
 { "key": "general.alignment", "type": "u32", "value": 64 }
 ```
 
-An array entry (sampled, never recursed):
+An array entry holds a bounded sample and is never recursed:
 
 ```json
 {
@@ -154,8 +156,9 @@ An array entry (sampled, never recursed):
 | `array.sample` | array | Up to three leading scalar elements; empty for nested arrays. |
 | `array.sample_truncated` | boolean | Whether elements are omitted from `sample`. |
 
-Array samples are bounded on purpose: a malicious file can declare millions of
-elements, and the report must stay small. Nested arrays are not recursed.
+The report bounds array samples on purpose: a malicious file can declare
+millions of elements, and the report must stay small. It does not recurse into
+nested arrays.
 
 ## `tensors`
 
@@ -195,7 +198,7 @@ type id. The list is empty when no tensor has a known type.
 | `percent` | number | Share of known tensor bytes, two decimals. |
 
 `percent` is computed from integer basis points, so it does not depend on
-floating-point rounding. Percentages are of known tensor bytes only.
+floating-point rounding. Percentages cover known tensor bytes only.
 
 ## `memory`
 
@@ -206,16 +209,17 @@ floating-point rounding. Percentages are of known tensor bytes only.
 | `overhead_bytes` | integer | `file_bytes - tensor_bytes`. |
 | `padding_bytes` | integer | Alignment gaps between tensors, including before the first tensor. |
 
-`overhead_bytes` is not header size: it includes padding, tensor metadata, and
-the bytes of unknown-type tensors. When `bytes_known` is false, both
-`tensor_bytes` and `overhead_bytes` are approximations; use
-`tensors.bytes_known` to tell.
+`overhead_bytes` is every byte that is not tensor data: the file header,
+metadata, tensor infos, alignment padding, trailing bytes, and the payload of
+unknown-type tensors. When `bytes_known` is false, treat both `tensor_bytes`
+and `overhead_bytes` as approximations; `tensors.bytes_known` reports whether
+the sizes are exact.
 
 ## `warnings`
 
 Non-fatal diagnostics, in parser emission order. Codes are stable kebab-case
-strings; messages are human-readable and may change. Warning codes are not a
-closed set: treat unknown codes as informational.
+strings; messages are human-readable and may change. Warning codes do not form
+a closed set: treat an unknown code as informational.
 
 | Code | Meaning |
 | --- | --- |
@@ -258,14 +262,14 @@ schema cannot silently drift:
 UPDATE_SCHEMAS=1 CARGO_HOME=$PWD/.cargo-home cargo test -p hoard-gguf --lib schema
 ```
 
-Regenerate only when the Rust types change on purpose, and commit the schema
+Regenerate the schema only when the Rust types change on purpose, and commit it
 together with the report changes.
 
 Compatibility rules:
 
 - Bumping `schema` is required for removed fields, renamed fields, changed
   types, changed units, or changed ordering guarantees.
-- Adding an optional field does not require a bump, but consumers must ignore
-  unknown fields. Adding a warning code does not require a bump.
+- Adding an optional field requires no bump, but consumers must ignore unknown
+  fields. Adding a warning code requires no bump either.
 - The human-readable output and warning message strings are outside the frozen
   contract.

@@ -1,8 +1,8 @@
 # Testing
 
-The test suite has no network dependency and no external services. It is split
-into deterministic unit tests, synthetic-fixture integration tests, a golden
-JSON report, and tests that use the downloaded real corpus when it is present.
+The test suite runs offline and needs no external services. It contains
+deterministic unit tests, synthetic-fixture integration tests, a golden JSON
+report, and tests that use the downloaded real corpus when it is present.
 
 ## Running
 
@@ -11,8 +11,8 @@ CARGO_HOME="$PWD/.cargo-home" cargo test --workspace --all-features
 ```
 
 The same command runs in CI after `bash scripts/fetch-fixtures.sh`. Tests that
-need `fixtures/real/` print a skip notice and pass when the files are absent, so
-a clean checkout and the Nix sandbox both work without downloading models.
+need `fixtures/real/` print a skip notice and pass when the files are absent,
+so a clean checkout and the Nix sandbox both work without downloading models.
 
 Per crate:
 
@@ -24,7 +24,7 @@ CARGO_HOME="$PWD/.cargo-home" cargo test -p hoard-cli
 
 Feature-gated suites: `--all-features` enables the `testing` feature of
 `hoard-gguf`, which exposes the deterministic fixture builder used by tests and
-by schema/fixture regeneration.
+by fixture regeneration.
 
 ## Current tests
 
@@ -66,8 +66,8 @@ The big-endian file is a negative test: hoard must reject it with the
 
 ## Planned: P1 differential harness
 
-Structural unit tests can confirm hoard is self-consistent, not that it agrees
-with `llama.cpp`. P1 adds a differential harness:
+Structural unit tests confirm hoard is self-consistent. They cannot show that
+it agrees with `llama.cpp`. P1 adds a differential harness:
 
 - Pin one `llama.cpp` commit for the oracle (the quantization table currently
   mirrors `de32b268c4ad55d45f3b7b16c029f4e077f4ba74`, `gguf-py/gguf/constants.py`)
@@ -87,22 +87,22 @@ with `llama.cpp`. P1 adds a differential harness:
 
 `cargo-fuzz` targets over `Gguf::parse` and `inspect`:
 
-- `fuzz_parse` — arbitrary bytes must return `Ok`/`Err`, never panic, hang, or
-  allocate unboundedly.
-- `fuzz_inspect` — parse a bounded input, then serialize the report; the report
+- `fuzz_parse`: arbitrary bytes must return `Ok`/`Err` and must never panic,
+  hang, or allocate without bound.
+- `fuzz_inspect`: parse a bounded input, then serialize the report; the report
   must always serialize to valid JSON.
-- Seed the corpora with the committed synthetic fixtures and the downloaded real
-  files. Use the parser caps as the oracle for memory: inputs that exceed a cap
-  must fail before allocation.
-- Run locally during parser changes and nightly in CI; do not gate pull requests
-  on a fuzzing time budget.
+- Seed the corpora with the committed synthetic fixtures and the downloaded
+  real files. Use the parser caps as the oracle for memory: inputs that exceed
+  a cap must fail before allocation.
+- Run locally during parser changes and nightly in CI; do not gate pull
+  requests on a fuzzing time budget.
 
 ## Planned: transport (P2)
 
 - A local mock HTTP server for success, wrong body, truncated body, redirects,
   wrong size, and slow responses.
-- Hash-mismatch and size-mismatch cases must fail closed and leave no final-path
-  file.
+- Hash-mismatch and size-mismatch cases must fail closed and leave no
+  final-path file.
 - Resume test: kill the download mid-write (`SIGKILL`), rerun, and confirm the
   partial file is rejected or discarded and the final CAS entry is correct.
 - Cache poisoning test: write a wrong file under a correct CAS name and confirm
@@ -112,8 +112,8 @@ with `llama.cpp`. P1 adds a differential harness:
 
 - Offline round-trip: fetch an artifact once, then build the same derivation
   with networking disabled and confirm the output hash matches the manifest.
-- FOD mismatch test: a manifest entry whose hash does not match the served bytes
-  must fail the build, not silently produce a different store path.
+- FOD mismatch test: a manifest entry whose hash does not match the served
+  bytes must fail the build, not silently produce a different store path.
 - Split-set test: a derivation that depends on several shards resolves them in
   one fixed-output farm with no network after the first build.
 
@@ -124,4 +124,4 @@ with `llama.cpp`. P1 adds a differential harness:
   locally.
 - There are no benchmarks in 0.1.0. Inspecting and hashing are linear in file
   size by design; a benchmark suite is a later addition, not a release gate.
-- No Windows, 32-bit, or big-endian-host testing.
+- The suite does not cover Windows, 32-bit hosts, or big-endian hosts.

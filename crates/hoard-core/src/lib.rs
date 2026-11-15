@@ -1,4 +1,4 @@
-//! `hoard-core` — manifest v1, canonical JSON, validation, and hashing for the
+//! `hoard-core`: manifest v1, canonical JSON, validation, and hashing for the
 //! `hoard` artifact layer.
 //!
 //! A manifest records where an artifact set came from (a Hugging Face
@@ -50,12 +50,12 @@
 //!
 //! # Modules
 //!
-//! - [`manifest`] — the manifest v1 types.
-//! - [`validate`] — the manifest v1 rules.
-//! - [`canonical`] — the canonical JSON encoding.
-//! - [`hash`] — streaming SHA-256/BLAKE3 helpers and digest types.
-//! - [`schema`] — the JSON Schema for manifest v1.
-//! - [`error`] — the shared error type.
+//! - [`manifest`]: the manifest v1 types.
+//! - [`validate`]: the manifest v1 rules.
+//! - [`canonical`]: the canonical JSON encoding.
+//! - [`hash`]: streaming SHA-256/BLAKE3 helpers and digest types.
+//! - [`schema`]: the JSON Schema for manifest v1.
+//! - [`error`]: the shared error type.
 
 #![deny(missing_docs)]
 

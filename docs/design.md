@@ -1,11 +1,11 @@
 # Design
 
-hoard is a small set of tools for moving large model files around without
-trusting the transport. It starts from the GGUF container format used by
-`llama.cpp`: `hoard-gguf` answers "what is in this file", and `hoard` answers
-"which bytes make up this artifact set, and what is their identity".
+hoard is a set of tools for moving large model files without trusting the
+transport. It starts from the GGUF container format used by `llama.cpp`:
+`hoard-gguf` answers "what is in this file", and `hoard` answers "which bytes
+make up this artifact set, and what is their identity".
 
-The long-term shape is three layers:
+The long-term shape is five layers:
 
 | Layer | Shipped in 0.1.0 | Responsibility |
 | --- | --- | --- |
@@ -15,8 +15,8 @@ The long-term shape is three layers:
 | Transport | no (P2) | Download from the source, verify, populate the content-addressed store. |
 | Nix integration | no (P3) | `fetchArtifact`-style fixed-output derivations over a pinned manifest. |
 
-Everything in 0.1.0 is read-only and offline: no command writes a model file,
-touches the network, or mutates a manifest in place.
+Everything in 0.1.0 is read-only and offline: commands read local files and
+never write a model file, touch the network, or mutate a manifest in place.
 
 ## Crates and boundaries
 
@@ -26,14 +26,13 @@ touches the network, or mutates a manifest in place.
 | `hoard-core` | none | `blake3`, `sha2`, `hex`, `serde`, `serde_json`, `schemars`, `thiserror` | Manifest and hashing only. Does not link `hoard-gguf`; a manifest can describe any file set. |
 | `hoard-cli` | `hoard` | `hoard-core`, `anyhow`, `clap`, `serde_json` | Command surface. Does not link `hoard-gguf`; the two binaries stay independent. |
 
-The dependency direction is deliberate. The format layer is usable on its own,
-the artifact layer has no GGUF-specific types, and the manifest hash does not
-change when GGUF parsing changes. A future transport layer belongs in
-`hoard-core` (or a sibling crate) and must depend on the artifact layer, not on
-the CLI.
+The dependency direction is deliberate. The format layer works on its own, the
+artifact layer has no GGUF-specific types, and the manifest hash does not change
+when GGUF parsing changes. A future transport layer belongs in `hoard-core` (or
+a sibling crate) and must depend on the artifact layer, not on the CLI.
 
 Both binaries are thin: argument parsing, human formatting, and error context.
-Logic lives in the libraries and is unit-tested there.
+The libraries hold the logic, and their unit tests exercise it.
 
 ## Zero-copy and unsafe
 
@@ -49,21 +48,21 @@ GgufFile (mmap) -> bytes() -> Gguf<'a> (borrows &'a [u8])
 - `GgufFile::open` memory-maps the file and rejects empty files.
 - `Gguf::parse` validates the header, metadata, and tensor infos, computes the
   aligned data start, and checks every tensor range against the file length
-  before returning. Accessors are then infallible; only `split()` can still
-  fail because split metadata validation is deliberately deferred.
+  before it returns. Accessors are then infallible; only `split()` can still
+  fail, because split metadata validation is deferred.
 - Metadata keys, string values, and tensor names are slices of the mapped file.
-  Parsing allocates only for the metadata entry list, array values, and tensor
-  infos. Inspecting a multi-gigabyte file does not copy its bytes.
-- There is exactly one `unsafe` operation in the workspace:
-  `memmap2::Mmap::map` in `crates/hoard-gguf/src/file.rs`, under a single
-  documented `#[allow(unsafe_code)]`. The workspace lint denies `unsafe_code`
-  everywhere else. The `mmap` hazard (exiting process, file truncated by
-  another process) is recorded in [security](security.md).
+  Parsing allocates memory only for the metadata entry list, array values, and
+  tensor infos. Inspecting a multi-gigabyte file copies no bytes.
+- The workspace has exactly one `unsafe` operation: `memmap2::Mmap::map` in
+  `crates/hoard-gguf/src/file.rs`, under a single documented
+  `#[allow(unsafe_code)]`. The workspace lint denies `unsafe_code` everywhere
+  else. The `mmap` hazard (exiting process, file truncated by another process)
+  is recorded in [security](security.md).
 
 ## Format subset
 
-`hoard-gguf` is strict about structure and tolerant about unusual-but-readable
-files. It parses GGUF version 2 and 3, little-endian only:
+`hoard-gguf` checks structure strictly and accepts files that are unusual but
+readable. It parses GGUF version 2 and 3, little-endian only:
 
 | Rule | Behaviour |
 | --- | --- |
@@ -92,8 +91,8 @@ Caps keep adversarial files bounded before allocation:
 | Tensor name length | 64 bytes |
 
 Every length read from the file is checked against the bytes that remain, and
-size arithmetic is checked. Malformed input produces a typed error, never a
-panic; the test suite includes a truncation sweep and a random-bytes property
+size arithmetic is checked. Malformed input produces a typed error; it does not
+panic. The test suite includes a truncation sweep and a random-bytes property
 test. Non-fatal findings are stable kebab-case warning codes that never affect
 the exit status; the full list is in [inspect](inspect.md).
 
@@ -115,10 +114,10 @@ the exit status; the full list is in [inspect](inspect.md).
 }
 ```
 
-Determinism rules: metadata entries are in file order; tensors are sorted by
-offset then name; `quant_mix` is sorted by bytes descending then type id;
-`warnings` are in parser emission order. Pretty output uses two spaces and a
-trailing newline.
+The document is deterministic: metadata entries are in file order, tensors are
+sorted by offset then name, `quant_mix` is sorted by bytes descending then type
+id, and `warnings` are in parser emission order. Pretty output uses two spaces
+and a trailing newline.
 
 The shape is frozen at `schema: 1` and generated from the Rust types with
 `schemars`; `schemas/inspect-v1.schema.json` is committed and a test fails when
@@ -156,12 +155,12 @@ The format, field rules, and trust model are documented in
 
 ## Planned transport (P2)
 
-P2 adds the commands that make "hoard" a verb: resolve a manifest for a
+P2 adds the commands that move and verify the bytes: resolve a manifest for a
 Hugging Face repository at a commit, download the files, verify them, and store
 them by BLAKE3. The design constraints:
 
-- The manifest is written *after* the bytes are hashed, so `blake3` always
-  describes downloaded content; `sha256` comes from the source metadata
+- The manifest is written after the bytes are hashed, so `blake3` always
+  describes downloaded content. The `sha256` comes from the source metadata
   (Hugging Face LFS oid) and is checked against the response.
 - A resume path writes partial downloads to a temp file and renames atomically;
   a killed process must never leave a partial file at its final CAS path.
@@ -175,7 +174,7 @@ them by BLAKE3. The design constraints:
 
 Nix users need the artifact set to participate in builds and binary caches.
 A fixed-output derivation can pin one file, and a hoard manifest supplies the
-hashes. Sketch, not shipped in 0.1.0:
+hashes. The sketch below is not shipped in 0.1.0:
 
 ```nix
 # fetchArtifact: one manifest entry as a Nix fixed-output derivation.
@@ -200,8 +199,7 @@ fetchurl {
 The open P3 questions are: pinning the manifest itself as a flake input (by
 artifact ID) versus a `fetchArtifact` that takes a pinned manifest hash, whether
 to teach Nix BLAKE3 directly, and how a multi-file artifact set becomes one
-derivation (symlink farm or output directory). None of that is promised by
-0.1.0.
+derivation (symlink farm or output directory). 0.1.0 promises none of it.
 
 ## Decisions
 
@@ -210,7 +208,7 @@ derivation (symlink farm or output directory). None of that is promised by
 | Byte order | Little-endian only | GGUF is written little-endian in practice; a swapped version word almost always means a mis-built file. Rejecting with a precise message is safer than silently byte-swapping. |
 | Versions | GGUF v2 and v3 only | v1 has an incompatible layout and is obsolete in `llama.cpp`; supporting it would add a second parser for no user benefit. |
 | Revision | Hugging Face commit sha (40 hex) | A branch or tag is mutable; a commit sha makes manifests reproducible and matches the URL form Hugging Face serves. The `sha256:` prefix is not used because the revision is not a content hash. |
-| Timestamps | None in manifests | The artifact ID must be a pure function of the content description. No `created_at`, no download time, no builder identity. |
+| Timestamps | None in manifests | The artifact ID must be a pure function of the content description. A `created_at` field, a download time, or a builder identity would all break that. |
 | Digest usage | `sha256` from source, `blake3` for CAS | The source digest is checkable at download; BLAKE3 is fast, tree-hashable, and the identity hoard controls. Both are recorded so neither role is overloaded. |
 | JSON schema | Frozen `schema: 1`, committed schema file | Consumers (`jq`, dashboards, Nix) need a stable contract. Drift is caught by a schema-equality test, and breaking changes require a version bump. |
 | Memory mapping | Zero-copy view, one audited `unsafe` | Inspecting a multi-gigabyte file should be cheap. Keeping the only `unsafe` in one documented function makes the workspace lint meaningful. |

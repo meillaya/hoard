@@ -32,7 +32,7 @@ of that encoding.
 }
 ```
 
-That is the canonical bytes of `fixtures/manifests/stories260k.json`.
+Those are the canonical bytes of `fixtures/manifests/stories260k.json`.
 
 ## Fields
 
@@ -67,11 +67,11 @@ Unknown keys anywhere are rejected (`deny_unknown_fields`).
 | `blake3` | string | Required; 64 lowercase hex characters, hoard's content-address digest. |
 | `siblings` | array | Optional; non-empty when present. Only allowed on `weights`. Sorted, self-excluding paths of other `weights` files in the same group. |
 
-Sibling relations are checksum-adjacent shards of the same artifact, for
-example `part-1.gguf` and `part-2.gguf` of a split model. A manifest is valid
-only when every referenced path exists in `files`, points at a `weights` file
-with the same `group` (including both being absent), and lists the referencing
-path back: the relation is symmetric.
+Sibling relations tie together related shards of one artifact, for example
+`part-1.gguf` and `part-2.gguf` of a split model. A manifest is valid only when
+every referenced path exists in `files`, points at a `weights` file with the
+same `group` (including both being absent), and lists the referencing path
+back: the relation is symmetric.
 
 `Manifest::from_json_bytes`/`from_path` only parse. All of the above is enforced
 by `Manifest::validate`, which rejects unsorted files, so a parsed manifest is
@@ -90,9 +90,9 @@ Canonical JSON is the identity of a manifest. The rules:
   `null` or `[]` by the canonical writer.
 
 `Manifest::canonical_bytes` implements this and canonicalises even a manifest
-parsed from non-canonical JSON; `hoard manifest fmt --check` fails when a file
-in the repository is not canonical. Object key order does not depend on field
-declaration order, so reordering struct fields does not change the hash.
+parsed from non-canonical JSON. `hoard manifest fmt --check` fails when a file
+is not canonical. Object key order does not depend on field declaration order,
+so reordering struct fields does not change the hash.
 
 ## Hash and artifact ID
 
@@ -100,11 +100,11 @@ declaration order, so reordering struct fields does not change the hash.
 manifest_hash = blake3(canonical_bytes)
 ```
 
-written as `blake3:<64 lowercase hex>`. It is a pure function of the canonical
-manifest: two manifests that differ only in JSON formatting, key order, or file
-array order hash the same; any semantic change (including a different revision
-or digest) hashes differently. `Manifest::hash` returns `Blake3Digest`, which
-displays that form. The CLI prints the artifact ID with
+written as `blake3:<64 lowercase hex>`. The hash is a pure function of the
+canonical manifest: two manifests that differ only in JSON formatting, key
+order, or file array order hash the same; any semantic change (including a
+different revision or digest) hashes differently. `Manifest::hash` returns
+`Blake3Digest`, which displays that form. The CLI prints the artifact ID with
 `hoard manifest hash <path>`.
 
 File digests are separate: `blake3` identifies file content in the
@@ -113,18 +113,17 @@ it.
 
 ## Trust model
 
-- The manifest hash is meaningful **after** validation. A manifest that has not
-  been validated is just JSON; `validate` is what rejects path traversal,
+- The manifest hash is meaningful after validation. Before `validate` accepts a
+  manifest, the file is only JSON; validation is what rejects path traversal,
   duplicate or unsorted entries, fake digest formats, and broken sibling
   relations.
-- `sha256` is source metadata: it comes from the Hugging Face LFS oid and is
-  trusted only as far as the source is. `blake3` is computed by hoard from the
-  downloaded bytes, before the manifest is written.
-- A manifest says what a file set *should* be, not what is on disk. Verification
-  recomputes digests (or checks the CAS) against the file; the manifest itself
-  carries no signature and version 1 has no provenance beyond the source
-  repository and commit.
-- No timestamps or other non-deterministic fields are part of a manifest, so
+- `sha256` is source metadata: it comes from the Hugging Face LFS oid and
+  carries only the source's trust. Before a manifest records `blake3`, hoard
+  computes it from the downloaded bytes.
+- A manifest describes a file set; verification recomputes digests (or checks
+  the CAS) against the files on disk. The manifest carries no signature, and
+  version 1 records no provenance beyond the source repository and commit.
+- A manifest holds no timestamps or other non-deterministic fields, so
   regenerating the same input produces byte-identical canonical JSON and the
   same hash.
 
@@ -133,9 +132,10 @@ it.
 `fixtures/manifests/stories260k.json` is the real example above: one
 1,185,376-byte GGUF from `ggml-org/models` at revision
 `499bc8821c6b12b4e53c5bffcb21ec206f212d81`, path
-`tinyllamas/stories260K.gguf`. The BLAKE3 was computed from the downloaded file
-(`fixtures/real/stories260K.gguf`, gitignored; `scripts/fetch-fixtures.sh`).
-Tests re-hash that file when it is present and skip when it is not.
+`tinyllamas/stories260K.gguf`. The BLAKE3 comes from the downloaded file
+`fixtures/real/stories260K.gguf` (gitignored; `scripts/fetch-fixtures.sh`
+fetches it). Tests re-hash that file when it is present and skip when it is
+absent.
 
 `fixtures/manifests/synthetic.json` uses fabricated digests (`0000…`, `aaaa…`)
 and exists only to pin canonicalisation and hash-golden behaviour. Do not treat
@@ -144,12 +144,11 @@ it as real artifact metadata.
 ## JSON Schema
 
 `schemas/manifest-v1.schema.json` is generated from the Rust types by
-`schemars` and committed (`* text=auto eol=lf` applies). The schema is
-structural: it expresses JSON shape, key sets, enums, and digest patterns, but
-not the cross-field rules (`files` sorted, distinct paths, non-empty and
-symmetric `siblings`, role/group restrictions). `hoard manifest validate`
-enforces those; schema-valid JSON can still fail validation. After changing the
-manifest types, regenerate it:
+`schemars` and committed (`* text=auto eol=lf` applies). The schema covers JSON
+shape, key sets, enums, and digest patterns. Cross-field rules (`files` sorted,
+distinct paths, non-empty and symmetric `siblings`, role/group restrictions)
+belong to `hoard manifest validate`, so schema-valid JSON can still fail
+validation. After changing the manifest types, regenerate it:
 
 ```sh
 UPDATE_SCHEMAS=1 CARGO_HOME=$PWD/.cargo-home cargo test -p hoard-core --test schema

@@ -2,7 +2,7 @@
 
 hoard is built in phases. Each phase is useful on its own; later phases do not
 require rewriting earlier ones. The phase names are used throughout the
-documentation, so "P2" means "transport", not "second half of the work".
+documentation, so "P2" means "transport" rather than "second half of the work".
 
 | Phase | Scope | State in 0.1.0 |
 | --- | --- | --- |
@@ -12,7 +12,7 @@ documentation, so "P2" means "transport", not "second half of the work".
 | P3 | Nix integration: fixed-output artifact derivations, offline builds. | Planned |
 | P4 | Ecosystem: publication, signing/attestations, wider platform and format coverage. | Planned |
 
-## P0 — Scaffold
+## P0: Scaffold
 
 - Three-crate workspace (`hoard-gguf`, `hoard-core`, `hoard-cli`), edition 2024,
   workspace lints (`unsafe_code` denied, `missing_docs` denied per crate).
@@ -25,7 +25,7 @@ documentation, so "P2" means "transport", not "second half of the work".
 - Documentation set: design, limits, security, development, testing, roadmap,
   inspect and manifest contracts.
 
-## P1 — Inspect MVP (0.1.0)
+## P1: Inspect MVP (0.1.0)
 
 Shipped:
 
@@ -49,10 +49,10 @@ Deferred from P1, tracked as follow-up work:
 | Differential harness against `llama.cpp` | Needs a pinned oracle and a real corpus that is too large to commit; see [testing](testing.md). |
 | `cargo-fuzz` targets | Needs a nightly toolchain and a corpus; planned with the transport work where untrusted input grows. |
 
-## P2 — Artifact pipeline
+## P2: Artifact pipeline
 
-Goal: make hoard actually move and verify model files, while preserving the
-current guarantees.
+Goal: hoard fetches, verifies, and stores model files and keeps the guarantees
+P1 established.
 
 - `hoard fetch`/`sync`: resolve a Hugging Face repository at a revision,
   download files, verify `sha256`, compute `blake3`, write the manifest.
@@ -70,10 +70,9 @@ current guarantees.
 Exit criteria: the fetch test matrix (success, wrong bytes, truncation,
 redirect, resumekill, cache poison) is green, and no P1 behaviour changes.
 
-## P3 — Nix integration
+## P3: Nix integration
 
-Goal: let Nix builds consume model artifacts as ordinary fixed-output
-derivations.
+Goal: Nix builds consume model artifacts as ordinary fixed-output derivations.
 
 - `fetchArtifact`-family helpers (or flake outputs) that take a pinned manifest
   and a file path and produce a Nix FOD.
@@ -87,7 +86,7 @@ derivations.
 Exit criteria: a sample derivation builds from a manifest on a clean machine
 with one network fetch, and from the Nix store with none.
 
-## P4 — Ecosystem and release
+## P4: Ecosystem and release
 
 - crates.io publication. `hoard-gguf` is published first (the name is free);
   the short `hoard`/`hoard-cli` names are likely taken, so the CLI package name
@@ -102,18 +101,18 @@ with one network fetch, and from the Nix store with none.
 
 ## Stopping points
 
-These are deliberate scope cuts, not unfinished work:
+These scope cuts are deliberate:
 
-- **No tensor decoding in 0.1.0.** Inspecting metadata and sizes is sufficient
-  to build manifests and identify files; decoding every quantization type is a
+- No tensor decoding in 0.1.0. Inspecting metadata and sizes is sufficient to
+  build manifests and identify files; decoding every quantization type is a
   large, separate correctness problem.
-- **No network in 0.1.0.** Transport is the next phase; shipping it half-done
-  would weaken the security story.
-- **Little-endian, v2/v3 only.** Reflects the format as used; converting
-  big-endian files is not a goal.
-- **No signatures.** Manifest v1 has no timestamp and no signature; identity is
+- No network in 0.1.0. Transport is the next phase; shipping it half-done would
+  weaken the security story.
+- Little-endian, v2/v3 only. hoard follows the format as it is written in
+  practice; converting big-endian files is not a goal.
+- No signatures. Manifest v1 has no timestamp and no signature; identity is
   content hashing. Signing is a P4 decision, not a missing field.
-- **No Intel macOS in the flake.** nixpkgs 26.11 dropped `x86_64-darwin`;
+- No Intel macOS in the flake. nixpkgs 26.11 dropped `x86_64-darwin`;
   carrying a stable-branch pin for one EOL platform would also pin the Rust
   toolchain. See [limits and non-goals](limitations.md).
 
