@@ -95,7 +95,7 @@
           outputHashAlgo = "sha256";
           outputHashMode = "flat";
           impureEnvVars = [ "HF_TOKEN" ];
-          nativeBuildInputs = [ pkgs.cacert ];
+          nativeBuildInputs = [ hoard pkgs.cacert ];
           buildCommand = ''
             export HOME="$TMPDIR"
             export XDG_CACHE_HOME="$TMPDIR/.cache"

@@ -30,8 +30,11 @@ fi
 
 # shellcheck disable=SC2086
 nix copy --to "file://${cache_dir}" ${fods}
+rm -f "${example_dir}/result"
+# Delete the farm first so the FODs are no longer referenced, then the FODs.
+nix-store --delete "$before"
 # shellcheck disable=SC2086
-nix store delete --ignore-liveness ${fods}
+nix-store --delete ${fods}
 
 after="$(build --offline --option substituters "file://${cache_dir}" --option require-sigs false)"
 

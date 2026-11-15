@@ -26,7 +26,7 @@
           default = hoard.lib.fetchArtifactSet {
             inherit pkgs;
             hoard = hoard.packages.${system}.default;
-            manifest = ../models/stories15M-q8_0.json;
+            manifest = ./models/stories15M-q8_0.json;
           };
         }
       );
