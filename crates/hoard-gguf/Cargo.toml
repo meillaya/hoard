@@ -8,7 +8,7 @@ authors.workspace = true
 repository.workspace = true
 readme = "README.md"
 keywords = ["gguf", "llama", "quantization", "mmap", "parser"]
-categories = ["parsing", "encoding", "machine-learning"]
+categories = ["parsing", "encoding", "artificial-intelligence"]
 
 [features]
 default = ["cli"]
