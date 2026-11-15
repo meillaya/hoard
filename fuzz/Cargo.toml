@@ -1,0 +1,33 @@
+[package]
+name = "hoard-gguf-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+# cargo-fuzz needs a nightly toolchain and manages its own lockfile and target
+# directory, so the fuzzers form an independent workspace from the main repo.
+# Run `cargo fuzz` from this directory (see README.md).
+[workspace]
+members = ["."]
+
+[dependencies]
+hoard-gguf = { path = "../crates/hoard-gguf", default-features = false }
+libfuzzer-sys = "0.4"
+serde_json = "1.0"
+
+[[bin]]
+name = "parse_gguf"
+path = "fuzz_targets/parse_gguf.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "manifest_or_inspect_json"
+path = "fuzz_targets/manifest_or_inspect_json.rs"
+test = false
+doc = false
+bench = false

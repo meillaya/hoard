@@ -138,38 +138,65 @@ The real corpus is fetched by `scripts/fetch-fixtures.sh`; see
 The big-endian file is a negative test: hoard must reject it with the
 `big-endian` diagnostic.
 
-## Planned: P1 differential harness
+## Parser oracle
 
-Structural unit tests confirm hoard is self-consistent. They cannot show that
-it agrees with `llama.cpp`. P1 adds a differential harness:
+`scripts/check-gguf-oracle.sh` compares `hoard-gguf inspect --json` with the
+`gguf-py` reader from pinned `llama.cpp` commit
+`de32b268c4ad55d45f3b7b16c029f4e077f4ba74`. The script downloads only `gguf-py`
+into `.cache/gguf-oracle`, builds the local binary, and runs
+`scripts/gguf_oracle.py`. Any field difference fails the run with the file and
+field named; a missing file exits 2 instead of skipping.
 
-- Pin one `llama.cpp` commit for the oracle (the quantization table currently
-  mirrors `de32b268c4ad55d45f3b7b16c029f4e077f4ba74`, `gguf-py/gguf/constants.py`)
-  and vendor or pin its reader; the table and the oracle must never drift
-  independently.
-- For every file in a real corpus, run `hoard-gguf inspect --json` and the
-  oracle, then compare: file version, alignment, `data_start`, metadata count,
-  tensor names, shapes, types, offsets, element counts, and computed byte
-  sizes.
-- Corpus: tiny Llama models, at least one split model (multiple `split.*`
-  parts), one `mmproj` file, non-`llama` architectures, and every quantization
-  type the table knows, plus a file with an unknown type id.
-- Keep the corpus out of the repository and skip the suite when the files are
-  absent, exactly like the current real-corpus tests.
+The comparator checks file version, byte order, alignment, `data_start`, file
+size, tensor and metadata counts, every metadata entry (key, type, scalar value;
+array element type, length, and first three samples; nested arrays by
+presence/type/length), model fields, every tensor (name, ggml type id, mapped
+type name, shape, elements, bytes, relative and absolute offset), and the
+derived quant-mix and memory totals.
 
-## Planned: fuzzing
+Results at 0.1.0: all three reference files matched, 3 of 3.
 
-`cargo-fuzz` targets over `Gguf::parse` and `inspect`:
+| File | Result |
+| --- | --- |
+| `synthetic-rich.gguf` | 24 metadata entries, 3 tensors, 131,496 tensor bytes, 56 padding bytes |
+| `synthetic-minimal.gguf` | 0 metadata entries, 0 tensors, 32-byte file |
+| `fixtures/real/stories260K.gguf` | 19 metadata entries, 48 F32 tensors, 1,171,200 tensor bytes |
 
-- `fuzz_parse`: arbitrary bytes must return `Ok`/`Err` and must never panic,
-  hang, or allocate without bound.
-- `fuzz_inspect`: parse a bounded input, then serialize the report; the report
-  must always serialize to valid JSON.
-- Seed the corpora with the committed synthetic fixtures and the downloaded
-  real files. Use the parser caps as the oracle for memory: inputs that exceed
-  a cap must fail before allocation.
-- Run locally during parser changes and nightly in CI; do not gate pull
-  requests on a fuzzing time budget.
+The harness rejects real discrepancies. A duplicate-key file that hoard accepts
+with a warning and `gguf-py` rejects fails the run; a corrupted report JSON shows
+the exact field difference.
+
+```sh
+bash scripts/fetch-fixtures.sh
+bash scripts/check-gguf-oracle.sh
+```
+
+Set `HOARD_ORACLE_PYTHON` when the default `python3` cannot import `numpy`. CI
+can let the script fall back to `nix shell nixpkgs#python3Packages.numpy`.
+
+## Fuzzing
+
+`fuzz/` is an independent Cargo workspace with two `cargo-fuzz` targets:
+
+- `parse_gguf`: arbitrary bytes reach `Gguf::parse`, every accessor, and the
+  inspect report. Accepted files must not panic or hang.
+- `manifest_or_inspect_json`: every accepted file must serialize to valid JSON
+  for both pretty and compact output, and the report must round-trip.
+
+The committed corpus has nine seeds per target: both synthetic fixtures, empty,
+bad magic, bad version, big-endian version, truncated header, header-only, and
+non-zero padding. `fuzz/sync-corpus.sh` regenerates the seeds deterministically.
+The fuzz crate is not part of `cargo test --workspace`.
+
+```sh
+CARGO_HOME="$PWD/.cargo-home" cargo +nightly fuzz build --manifest-path fuzz/Cargo.toml
+CARGO_HOME="$PWD/.cargo-home" cargo +nightly fuzz run parse_gguf --manifest-path fuzz/Cargo.toml -- -max_total_time=30
+```
+
+Short campaigns at 0.1.0 found no crashes: `parse_gguf` ran 295,686 executions
+in 31 s; `manifest_or_inspect_json` ran 83,020 executions in 21 s. Run the
+targets during parser changes. A nightly toolchain and `cargo-fuzz` are
+required.
 
 ## Boundaries
 

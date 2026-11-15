@@ -42,16 +42,18 @@ Shipped:
 - `hoard hash`, `hoard manifest validate|fmt|hash|schema`.
 - Real and synthetic fixtures, golden-report tests, schema-drift tests, and the
   documented limits.
+- Differential oracle against `llama.cpp` commit
+  `de32b268c4ad55d45f3b7b16c029f4e077f4ba74`: 3 of 3 reference files match.
+- `cargo-fuzz` targets for parsing and inspect JSON, with a nine-seed corpus
+  per target; short campaigns found no crashes.
 
 Deferred from P1, tracked as follow-up work:
 
 | Item | Why it is deferred |
 | --- | --- |
-| Standalone GGUF validator | The parser already validates structure on read; a separate "validate against the full spec" command needs the differential oracle to be meaningful. |
+| Standalone GGUF validator | The parser already validates structure on read; a separate "validate against the full spec" command needs broader corpus and reviewer input. |
 | Split and merge tools | Writing GGUF shards is a different feature set (writer, alignment rules, cross-part tensor accounting) and was not needed to prove the parser. |
 | Quantization decode | Requires tensor-data decoding for every type; inspect deliberately reports metadata and sizes only. |
-| Differential harness against `llama.cpp` | Needs a pinned oracle and a real corpus that is too large to commit; see [testing](testing.md). |
-| `cargo-fuzz` targets | Needs a nightly toolchain and a corpus; planned with the transport work where untrusted input grows. |
 
 ## P2: Artifact pipeline
 
@@ -120,8 +122,8 @@ Remaining for P3:
   is resolved before its first release. Binary names stay `hoard` and
   `hoard-gguf`.
 - Release automation: tag-driven builds, checksums, changelog checks.
-- Parser assurance: the differential harness against `llama.cpp` and the
-  `cargo-fuzz` targets become release gates.
+- Parser assurance: run the committed `llama.cpp` differential harness and the
+  `cargo-fuzz` targets on the release commit before publishing.
 - Signing/attestation: sign manifests or artifacts, or verify CI provenance;
   decide whether this belongs in the format, the transport, or the cache.
 - Platform matrix: CI for macOS/aarch64 Nix outputs; Windows support decision.

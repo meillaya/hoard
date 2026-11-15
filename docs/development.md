@@ -86,19 +86,23 @@ RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
 
 On a passing tree, every command exits 0.
 
-The default suite is offline. Two checks are opt-in because they need network
-access or a Nix store round-trip:
+The default suite is offline. Four checks are opt-in because they need network
+access, a Nix store round-trip, or a nightly toolchain:
 
 ```sh
 cargo test -p hoard-hf --test live_xet -- --ignored --nocapture
+bash scripts/check-gguf-oracle.sh
 bash scripts/check-nix-roundtrip.sh
+CARGO_HOME="$PWD/.cargo-home" cargo +nightly fuzz run parse_gguf --manifest-path fuzz/Cargo.toml -- -max_total_time=30
 ```
 
-The live gate downloads from the public Hub over Xet. The round-trip builds the
-consumer example in `examples/nix`, copies its fixed-output derivations to a
-temporary local cache, deletes them, and rebuilds offline. It needs `nix`,
-`nix-store`, and `nix copy` on `PATH`, and it may fetch the example files on a
-cold store.
+The live gate downloads from the public Hub over Xet. The oracle compares the
+local inspector with pinned `llama.cpp` `gguf-py` and needs `python3` with
+`numpy`, or the script's `nix shell` fallback. The round-trip builds the consumer
+example in `examples/nix`, copies its fixed-output derivations to a temporary
+local cache, deletes them, and rebuilds offline. It needs `nix`, `nix-store`, and
+`nix copy` on `PATH`, and it may fetch the example files on a cold store. The
+fuzz target needs nightly `cargo-fuzz`; see [testing](testing.md).
 
 `scripts/fetch-fixtures.sh` downloads the two real GGUF files into
 `fixtures/real/` (gitignored) and verifies their SHA-256. Tests that need them
