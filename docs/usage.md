@@ -26,9 +26,17 @@ nix build .#default
 ./result/bin/hoard-gguf --version
 ```
 
-The crates are not published to crates.io in 0.1.0. `hoard-gguf`, `hoard hash`,
-and the `hoard manifest` commands are read-only and offline. `hoard fetch` is
-the one command that uses the network: it downloads files into the CAS, verifies
+The 0.1.0 crates are published on crates.io. Install the binaries with:
+
+```sh
+cargo install hoard-artifact --locked
+cargo install hoard-gguf --locked
+```
+
+The package is `hoard-artifact` because the `hoard` and `hoard-cli` names are
+taken; the installed binary is still `hoard`. `hoard-gguf`, `hoard hash`, and
+the `hoard manifest` commands are read-only and offline. `hoard fetch` is the
+one command that uses the network: it downloads files into the CAS, verifies
 both digests, and for a spec writes a canonical manifest. `hoard verify` and
 `hoard store` read the CAS, and `hoard push` hands the CAS paths to `nix copy`.
 

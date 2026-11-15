@@ -10,7 +10,7 @@ documentation, so "P2" means "transport" rather than "second half of the work".
 | P1 | Inspect MVP: GGUF v2/v3 parser, inspect report, manifest v1, hashing, CLI. | Done for 0.1.0; deferred items below |
 | P2 | Artifact pipeline: fetch, verify, content-addressed store, resume. | Partially shipped: fetch, verify, store, push, CAS, resume. |
 | P3 | Nix integration: fixed-output artifact derivations, offline builds. | Partially shipped: per-file flat FODs, `fetchArtifactSet`, round-trip check. |
-| P4 | Ecosystem: publication, signing/attestations, wider platform and format coverage. | Planned |
+| P4 | Ecosystem: publication, signing/attestations, wider platform and format coverage. | In progress |
 
 ## P0: Scaffold
 
@@ -117,9 +117,9 @@ Remaining for P3:
 
 ## P4: Ecosystem and release
 
-- crates.io publication. `hoard-gguf` is published first (the name is free);
-  the short `hoard`/`hoard-cli` names are likely taken, so the CLI package name
-  is resolved before its first release. Binary names stay `hoard` and
+- crates.io publication: `hoard-gguf`, `hoard-core`, `hoard-hf`, and
+  `hoard-artifact` 0.1.0 are published. The CLI package is `hoard-artifact`
+  because `hoard` and `hoard-cli` are taken; binary names stay `hoard` and
   `hoard-gguf`.
 - Release automation: tag-driven builds, checksums, changelog checks.
 - Parser assurance: run the committed `llama.cpp` differential harness and the
@@ -160,7 +160,7 @@ These scope cuts are deliberate:
 | The CAS grows without bound. | Disk exhaustion on long-lived machines. | The store is whole-file and re-hashed on read, so deleting it is always safe; a plan/prune path is on the P2 list. |
 | Cache signing and credentials are mishandled. | Pushed paths cannot be verified elsewhere, or keys leak. | Hoard holds no keys; `nix copy` and the cache own signing, and the docs say so. |
 | Private repositories are untested. | The token path may fail for gated files. | Anonymous public coverage in CI plus the live gate; add a private-repository check before claiming support. |
-| crates.io name collisions. | CLI crate publication blocked under the intended name. | Publish `hoard-gguf` first; rename the CLI package if needed, keep binary names. |
+| crates.io name collisions. | The CLI cannot use the intended `hoard` or `hoard-cli` name. | Publish the CLI as `hoard-artifact`; keep binary names `hoard` and `hoard-gguf`. |
 | Large-file memory-mapping faults (`SIGBUS`). | Process abort while inspecting a file being rewritten. | Documented limitation; hashing streams instead of mapping; never write model files. |
-| Fuzzing and differential testing are not yet gates. | Parser regressions may not be caught before release. | Add both in P1 follow-up/P2; keep the synthetic fixture truncation sweep in the meantime. |
+| Fuzz campaigns are short and not yet a hard release gate. | Parser regressions may not be caught. | The oracle and fuzz targets exist and run locally; run both on the release commit before publishing the next version. |
 | macOS/aarch64 Nix outputs are not exercised locally. | Flake breakage could ship. | Evaluate all systems in CI via `nix flake show --all-systems`; build coverage later. |

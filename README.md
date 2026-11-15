@@ -183,6 +183,7 @@ consumer example is in `examples/nix/flake.nix`, and its manifest is
 - [Manifest v1](docs/manifest.md): fields, canonical form, artifact ID.
 - [CLI reference](docs/usage.md): commands, flags, exit codes, environment.
 - [Fetch and verify artifacts](docs/fetch.md): fetch workflow, CAS, Nix consumer.
+- [Nix packaging](packaging/nixpkgs/README.md): draft nixpkgs expression and review notes.
 - [Limits and non-goals](docs/limitations.md): what hoard does not do.
 - [Security model](docs/security.md): threats, mitigations, residual risks.
 - [Development](docs/development.md): toolchain, checks, Nix, CI, layout.
@@ -190,8 +191,14 @@ consumer example is in `examples/nix/flake.nix`, and its manifest is
 - [Roadmap](docs/roadmap.md): phases P0 to P4 and stopping points.
 - [Fixtures](fixtures/README.md): synthetic and downloaded test corpus.
 
-The crates are not published to crates.io yet. `hoard-gguf` is the first
-publication target.
+The 0.1.0 crates are on crates.io: `hoard-gguf`, `hoard-core`, `hoard-hf`, and
+`hoard-artifact`. The package `hoard-artifact` installs the `hoard` binary; the
+`hoard` and `hoard-cli` names are taken by other projects.
+
+```sh
+cargo install hoard-artifact --locked
+cargo install hoard-gguf --locked
+```
 
 ## Licence
 

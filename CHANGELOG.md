@@ -7,11 +7,14 @@ and this project aims to follow [Semantic Versioning](https://semver.org/spec/v2
 
 ## 0.1.0
 
-Initial release: offline, read-only GGUF inspection, manifests, and hashing.
+Initial release: GGUF inspection, manifests, verified Hugging Face fetch, flat Nix fixed-output paths, and crates.io publication.
 
 ### Added
 
-- Three-crate Rust workspace (`hoard-gguf`, `hoard-core`, `hoard-artifact`) on
+- Published on crates.io as `hoard-gguf`, `hoard-core`, `hoard-hf`, and
+  `hoard-artifact` 0.1.0. The CLI package is `hoard-artifact`; its binary is
+  `hoard`.
+- Four-crate Rust workspace (`hoard-gguf`, `hoard-core`, `hoard-hf`, `hoard-artifact`) on
   edition 2024, Apache-2.0, with `Cargo.lock` committed and a pinned 1.99.1
   toolchain. Workspace lints deny `unsafe_code`; crates deny missing docs.
 - `hoard-gguf`: strict, zero-copy GGUF v2/v3 parser for little-endian files.
