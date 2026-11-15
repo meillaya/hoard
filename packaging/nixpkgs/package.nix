@@ -1,0 +1,68 @@
+{
+  lib,
+  rustPlatform,
+  fetchFromGitHub,
+  pkg-config,
+  aws-lc,
+  cacert,
+  nix-update-script,
+}:
+
+rustPlatform.buildRustPackage (finalAttrs: {
+  pname = "hoard";
+  version = "0.1.0";
+
+  src = fetchFromGitHub {
+    owner = "meillaya";
+    repo = "hoard";
+    # Upstream has not tagged a release yet; pin the commit that is on `main`
+    # when this package was prepared. Replace with `rev = "v${version}"` once
+    # a tag exists.
+    rev = "a5800608acc11c795df6ec92a863125bc9f34f07";
+    hash = "sha256-s4Ii/r4SmxfojxlyT8pwpCno9K+BpbQ63KzFpoVgIS4=";
+  };
+
+  cargoHash = "sha256-hP2cQBjrByYFT4oTKoDsU4RRgGzt/NwTrxjzhFJ+tVs=";
+
+  # Build the whole workspace: an install hook copies every binary to $out/bin,
+  # so both `hoard` and `hoard-gguf` land there.
+  cargoBuildFlags = [
+    "--workspace"
+  ];
+  cargoTestFlags = [
+    "--workspace"
+  ];
+
+  # reqwest and hf-xet activate aws-lc-rs through rustls; nixpkgs sets
+  # AWS_LC_SYS_USE_SYSTEM=1 for Rust builds, so provide the library instead of
+  # letting aws-lc-sys build its own copy.
+  nativeBuildInputs = [ pkg-config ];
+  buildInputs = [ aws-lc ];
+
+  # The Hub client tests construct a reqwest client with the system root store;
+  # point it at nixpkgs' CA bundle so `cargo test` works in the sandbox.
+  preCheck = ''
+    export SSL_CERT_FILE="${cacert}/etc/ssl/certs/ca-bundle.crt"
+    export SSL_CERT_DIR="${cacert}/etc/ssl/certs"
+  '';
+
+  passthru.updateScript = nix-update-script { };
+
+  meta = {
+    description = "Verifiable, content-addressed artifacts for large model files";
+    longDescription = ''
+      hoard inspects GGUF model files without decoding their tensors, computes
+      SHA-256 and BLAKE3 digests, pins artifact sets in canonical manifests, and
+      downloads files from the Hugging Face Hub with digest verification. The
+      package installs the `hoard` artifact CLI and the `hoard-gguf` inspector.
+    '';
+    homepage = "https://github.com/meillaya/hoard";
+    changelog = "https://github.com/meillaya/hoard/blob/${finalAttrs.src.rev}/CHANGELOG.md";
+    license = lib.licenses.asl20;
+    # No maintainer entry yet: the upstream repository has no nixpkgs
+    # maintainer. Add one before submitting the PR (see packaging/nixpkgs/README.md).
+    maintainers = [ ];
+    mainProgram = "hoard";
+    platforms = lib.platforms.unix;
+  };
+})
