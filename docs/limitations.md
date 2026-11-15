@@ -1,9 +1,9 @@
 # Limits and non-goals
 
-hoard 0.1.0 is a read-only inspection and identity tool for GGUF model files.
-It does not download, convert, split, merge, quantize, or serve models.
-Everything below is out of scope for this release; some of it is planned, and
-the roadmap says which.
+hoard 0.1.0 inspects GGUF model files, fetches and verifies Hugging Face
+artifacts, and turns a pinned manifest into flat Nix store paths. Everything
+below is out of scope for this release; some of it is planned, and the roadmap
+says which.
 
 ## Format
 
@@ -70,23 +70,51 @@ and fails with an I/O error.
 | Binary | Commands |
 | --- | --- |
 | `hoard-gguf` | `inspect`, `schema` |
-| `hoard` | `hash`, `manifest validate`, `manifest fmt`, `manifest hash`, `manifest schema` |
+| `hoard` | `hash`, `manifest validate`, `manifest fmt`, `manifest hash`, `manifest schema`, `fetch`, `verify`, `store`, `push` |
+
+The commands split by network use:
+
+- `hoard-gguf`, `hoard hash`, and `hoard manifest` read local files and print
+  output. They write nothing and open no network connections.
+- `hoard fetch` is the only command that opens a network connection. It writes
+  the CAS, a manifest, and optional `--out` files.
+- `hoard verify` and `hoard store` read the CAS. `hoard push` runs `nix copy`
+  against the destination URI.
 
 Not shipped:
 
-- Fetching: there is no `fetch`, `download`, `pull`, or `sync` command. You
-  download the files; hoard only hashes and validates them once they are local.
-  Transport is planned for P2.
-- Artifact storage: there is no content-addressed store, cache, or
-  `verify`-against-CAS command. The manifests record BLAKE3 digests, but hoard
-  does not yet build a store from them.
-- Transport: hoard has no Hugging Face API client, HTTP client, retry logic,
-  resume support, or authentication. Everything in 0.1.0 works offline.
-- Manifest editing: `hoard manifest fmt` writes the canonical form to stdout;
-  it does not rewrite the input file. No command creates a manifest from a
-  directory or from the network.
-- Environment variables: neither binary reads configuration from the
-  environment in 0.1.0; all input is command-line arguments and file paths.
+- Generic sources. Fetch works against Hugging Face only, and only for files
+  whose tree entry carries an LFS object id. There is no generic HTTPS URL,
+  local directory, S3, or Git source, and no transfer of a non-LFS file.
+- Manifest editing. `hoard manifest fmt` writes the canonical form to stdout;
+  it does not rewrite the input file. `hoard fetch` generates a manifest from a
+  Hugging Face listing; nothing builds a manifest from a local directory.
+- A configuration file. Configuration lives in arguments, manifest fields, and
+  the environment variables listed in [usage](usage.md#environment-variables).
+- A store GC or prune command. The CAS has no index and no removals.
+- Parallel downloads. `hoard fetch` downloads selected files one at a time.
+- A plan or dry-run mode, and any progress user interface beyond the stderr
+  lines.
+
+## Fetch and transport
+
+- Fetch supports Hugging Face LFS/Xet files only. A file without a published
+  LFS SHA-256 is rejected before any request is made.
+- Public repositories are tested. `HF_TOKEN` and `HUGGING_FACE_HUB_TOKEN` cover
+  gated and private repositories, but the test suite does not exercise a private
+  repository.
+- Transports are Xet and plain HTTP. There is no FTP, S3, or Git transport.
+- HTTP resume is a Range request against a kept `<dest>.part` file. Xet resume
+  and shard caching are delegated to `hf-xet` and `HOARD_XET_CACHE`.
+- The CAS is whole-file and keyed by BLAKE3. There is no content-defined
+  chunking and no local chunk-level dedupe; Xet deduplicates transfer.
+- Fetch runs resolve a branch or tag to a commit sha first and record the sha.
+  A manifest revision is always a 40-character commit sha; hoard cannot fetch a
+  manifest itself, so a manifest has to arrive through a channel you trust.
+- `--offline` applies only with `--manifest`. A spec has to be resolved online
+  before any byte can be cached.
+- Downloads verify the source SHA-256 and the computed BLAKE3. There is no
+  option to accept a mismatch, and no trust-on-first-use mode.
 
 ## Manifests
 
@@ -107,12 +135,21 @@ Not shipped:
 
 ## Nix
 
-- The flake has no artifact-layer commands: `nix build .#default` builds the
-  two binaries, but there is no `fetchArtifact`, `fetchManifest`, or model-set
-  derivation yet. The integration is planned for P3; the sketch is in
-  [design](design.md).
-- The project has no binary cache or store integration: hoard does not produce
-  Nix store paths or NARs in 0.1.0.
+- The flake exports `lib.fetchArtifact` and `lib.fetchArtifactSet`, which read a
+  local manifest v1 file and build flat fixed-output derivations. Each helper
+  takes the hoard package and the manifest as arguments, so the consumer owns
+  both inputs.
+- The manifest is not pinned by artifact ID as a flake input yet. You pass a
+  path, and pinning that file is your job.
+- One flat FOD per file and a symlink farm for the set. There is no recursive
+  NAR derivation and no single derivation that carries a whole set.
+- Nix fixed-output derivations use sha256 and sha512, so the flow uses the
+  manifest `sha256`. Nix does not check BLAKE3 directly.
+- Hoard holds no signing keys. `hoard push` delegates upload and signing to
+  `nix copy`, and the destination cache decides its signature policy.
+- The first build of a file needs network access. Later builds use the binary
+  cache or the local store, and the round-trip script checks that an offline
+  rebuild produces the same path.
 
 ## Platforms
 
@@ -140,4 +177,6 @@ Not shipped:
 See [security](security.md) for the threat model. hoard validates file
 structure and content hashes; it does not vouch for the publisher. A
 memory-mapped file truncated by another process can abort the inspecting
-process.
+process. `hoard fetch` trusts the Hub for the repository listing and the
+source `sha256`, and the pinned commit and TLS bound that trust. Hoard keeps no
+trust-on-first-use state, and cache signing is delegated to Nix.

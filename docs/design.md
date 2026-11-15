@@ -10,29 +10,35 @@ The long-term shape is five layers:
 | Layer | Shipped in 0.1.0 | Responsibility |
 | --- | --- | --- |
 | Format | yes | `hoard-gguf`: strict GGUF parsing, inspect report, warning codes. |
-| Artifact | yes (library + CLI) | `hoard-core`: manifest v1, canonical JSON, validation, streaming hashes. |
+| Artifact | yes (library + CLI) | `hoard-core`: manifest v1, canonical JSON, validation, streaming hashes, content-addressed store, manifest builder. |
 | Tooling | yes | `hoard` and `hoard-gguf` binaries: commands, JSON output, exit codes. |
-| Transport | no (P2) | Download from the source, verify, populate the content-addressed store. |
-| Nix integration | no (P3) | `fetchArtifact`-style fixed-output derivations over a pinned manifest. |
+| Transport | partial | `hoard-hf` and `hoard fetch`: resolve a Hub commit, download over Xet or HTTP, verify, populate the CAS. |
+| Nix integration | partial | `lib.fetchArtifact`, `lib.fetchArtifactSet`: flat fixed-output derivations and a symlink farm over a pinned manifest. |
 
-Everything in 0.1.0 is read-only and offline: commands read local files and
-never write a model file, touch the network, or mutate a manifest in place.
+0.1.0 splits along the network. `hoard-gguf`, `hoard hash`, and the manifest
+commands stay local and offline. `hoard fetch` resolves a Hugging Face revision,
+downloads through Xet or plain HTTP, verifies the source SHA-256 and the computed
+BLAKE3, and writes the bytes to a content-addressed store before it writes a
+manifest. The Nix helpers consume a pinned manifest and do not import hoard code
+into the build.
 
 ## Crates and boundaries
 
 | Crate | Binary | Depends on | Boundary |
 | --- | --- | --- | --- |
 | `hoard-gguf` | `hoard-gguf` | `memmap2`, `serde`, `serde_json`, `schemars`, `thiserror`, optional `clap`/`anyhow` | GGUF only. Does not know about manifests, hashes, the network, or other artifacts. |
-| `hoard-core` | none | `blake3`, `sha2`, `hex`, `serde`, `serde_json`, `schemars`, `thiserror` | Manifest and hashing only. Does not link `hoard-gguf`; a manifest can describe any file set. |
-| `hoard-cli` | `hoard` | `hoard-core`, `anyhow`, `clap`, `serde_json` | Command surface. Does not link `hoard-gguf`; the two binaries stay independent. |
+| `hoard-core` | none | `blake3`, `sha2`, `hex`, `serde`, `serde_json`, `schemars`, `thiserror`, `tempfile` | Manifest, hashing, CAS, and manifest builder. Does not link `hoard-gguf` or `hoard-hf`; the artifact layer has no network types. |
+| `hoard-hf` | none | `hf-xet`, `reqwest`, `serde`, `serde_json`, `sha2`, `tempfile`, `thiserror`, `url` | Hugging Face resolution and transport only. Does not link `hoard-core`; verification against a manifest belongs to the caller. |
+| `hoard-cli` | `hoard` | `hoard-core`, `hoard-hf`, `anyhow`, `clap`, `serde_json`, `tempfile` | Command surface. Does not link `hoard-gguf`; the two binaries stay independent. |
 
 The dependency direction is deliberate. The format layer works on its own, the
-artifact layer has no GGUF-specific types, and the manifest hash does not change
-when GGUF parsing changes. A future transport layer belongs in `hoard-core` (or
-a sibling crate) and must depend on the artifact layer, not on the CLI.
+artifact layer has no GGUF or network types, and the transport layer knows
+nothing about manifests or CAS paths. The CLI composes the artifact and
+transport layers, so a new source can slot in behind the transport boundary
+without changing the manifest identity.
 
-Both binaries are thin: argument parsing, human formatting, and error context.
-The libraries hold the logic, and their unit tests exercise it.
+Both binaries are thin: argument parsing, formatting, and error context. The
+libraries hold the logic, and their unit tests exercise it.
 
 ## Zero-copy and unsafe
 
@@ -153,53 +159,73 @@ The manifest hash is the artifact ID printed by `hoard manifest hash`. File
 The format, field rules, and trust model are documented in
 [manifest](manifest.md).
 
-## Planned transport (P2)
+## Transport (P2, partial)
 
-P2 adds the commands that move and verify the bytes: resolve a manifest for a
-Hugging Face repository at a commit, download the files, verify them, and store
-them by BLAKE3. The design constraints:
+P2 ships the fetch path for Hugging Face LFS/Xet files. The constraints from the
+plan hold, and the remaining work is listed at the end.
 
-- The manifest is written after the bytes are hashed, so `blake3` always
-  describes downloaded content. The `sha256` comes from the source metadata
-  (Hugging Face LFS oid) and is checked against the response.
-- A resume path writes partial downloads to a temp file and renames atomically;
-  a killed process must never leave a partial file at its final CAS path.
-- Verification is fail-closed: any digest mismatch, size mismatch, or missing
-  file fails the command and reports the file, expected hash, and observed
-  hash. There is no "trust on first use" cache.
-- Transport is separate from format: `hoard fetch` writes a manifest and CAS
-  entries, and `hoard-gguf inspect` remains a local, offline tool.
+- `hoard fetch <spec>` resolves a branch, tag, or commit to a 40-character
+  commit sha before it lists files. The manifest records the sha, so a mutable
+  ref cannot change between resolution and download.
+- `hoard-hf` lists the repository tree at the resolved commit. A file must
+  carry a published LFS SHA-256; a file without one is rejected before any
+  request is made.
+- `Transport::Auto` prefers Xet when the tree entry carries a Xet hash and
+  falls back to plain HTTP when the Xet transfer fails for a transport reason.
+  A digest or size mismatch is never retried on another transport.
+- HTTP downloads write `<dest>.part`, verify the size and SHA-256, and rename.
+  A truncated body keeps the part file for a Range resume; a digest mismatch
+  removes it.
+- Requests retry three times on 429, 5xx, connection, and timeout failures with
+  exponential backoff and jitter. Redirects stop at the Hugging Face hosts, the
+  Xet CAS host, or the configured endpoint host, with at most eight hops.
+- The manifest is written after the bytes are hashed: `blake3` comes from the
+  CAS entry, and `sha256` and `size` come from the source listing. The builder
+  rejects any disagreement between the two, and the manifest write is atomic.
+- Verification is fail-closed. `hoard fetch --manifest` checks the remote size
+  and SHA-256 against the manifest before downloading and compares BLAKE3 after
+  storing. `hoard verify` re-hashes CAS blobs or directory files. A mismatch
+  exits 1 and no manifest is written.
+- There is no trust-on-first-use cache. Reads re-hash the blob, so a poisoned
+  store entry is rejected instead of used.
 
-## Planned Nix integration (P3)
+Remaining for P2: generic sources, a plan or dry-run mode, store garbage
+collection, and a decision on chunk-level deduplication. The CAS is whole-file
+by BLAKE3; Xet handles transfer deduplication.
 
-Nix users need the artifact set to participate in builds and binary caches.
-A fixed-output derivation can pin one file, and a hoard manifest supplies the
-hashes. The sketch below is not shipped in 0.1.0:
+## Nix integration (P3, partial)
 
-```nix
-# fetchArtifact: one manifest entry as a Nix fixed-output derivation.
-# The manifest is itself an input (pinned by its artifact ID); the FOD is
-# checked by Nix, so a build cannot observe bytes that hoard would reject.
-{ fetchurl }:
+The flake exports two helpers:
 
-{ manifest, path }:
-let
-  entry = builtins.head (builtins.filter (file: file.path == path) manifest.files);
-  # Nix FODs support sha256/sha512; the manifest's sha256 is the source
-  # (Hugging Face LFS) digest. The blake3 remains the CAS identity.
-  hash = "sha256:${entry.sha256}";
-in
-fetchurl {
-  name = baseNameOf entry.path;
-  url = "https://huggingface.co/${manifest.source.repo}/resolve/${manifest.source.revision}/${entry.path}";
-  inherit hash; # Nix checks the bytes before they enter the store
-}
-```
+- `lib.fetchArtifact { pkgs, hoard, manifest, path }` builds one flat
+  fixed-output derivation for one manifest entry.
+- `lib.fetchArtifactSet { pkgs, hoard, manifest }` builds one FOD per entry and
+  assembles the set as a symlink farm.
 
-The open P3 questions are: pinning the manifest itself as a flake input (by
-artifact ID) versus a `fetchArtifact` that takes a pinned manifest hash, whether
-to teach Nix BLAKE3 directly, and how a multi-file artifact set becomes one
-derivation (symlink farm or output directory). 0.1.0 promises none of it.
+The flat-FOD decision follows from the hash formats. Nix fixed-output
+derivations support sha256 and sha512, and manifest v1 records the source
+sha256 for every file, so each file maps to one FOD with
+`outputHashMode = "flat"`. The store path then contains exactly the file bytes,
+and its name is `hoard-<first 12 characters of sha256>-<basename>`.
+`hoard store` reproduces the same path with `nix-store --add-fixed sha256`, and
+`hoard push` copies it with `nix copy`. A recursive NAR derivation would wrap
+the bytes in a directory and force a whole set to rebuild when one file
+changes, so the helper uses one FOD per file and a symlink farm for the set.
+
+Signing belongs to the cache. Hoard holds no keys, and `hoard push` delegates to
+`nix copy`; a cache that requires signatures needs Nix's signing configuration
+on the pushing side.
+
+`examples/nix/flake.nix` is a consumer that takes `github:meillaya/hoard` as an
+input and calls `fetchArtifactSet` with
+`examples/nix/models/stories15M-q8_0.json`. Local testing overrides the input
+with `git+file:`. `scripts/check-nix-roundtrip.sh` builds the example, copies
+its FODs to a temporary file cache, deletes them, rebuilds offline from that
+cache, and compares the two output paths.
+
+Remaining for P3: pin the manifest itself as a flake input by artifact ID, send
+the helper pattern upstream, and decide whether Nix should learn BLAKE3
+directly.
 
 ## Decisions
 
@@ -210,6 +236,12 @@ derivation (symlink farm or output directory). 0.1.0 promises none of it.
 | Revision | Hugging Face commit sha (40 hex) | A branch or tag is mutable; a commit sha makes manifests reproducible and matches the URL form Hugging Face serves. The `sha256:` prefix is not used because the revision is not a content hash. |
 | Timestamps | None in manifests | The artifact ID must be a pure function of the content description. A `created_at` field, a download time, or a builder identity would all break that. |
 | Digest usage | `sha256` from source, `blake3` for CAS | The source digest is checkable at download; BLAKE3 is fast, tree-hashable, and the identity hoard controls. Both are recorded so neither role is overloaded. |
+| CAS granularity | Whole-file blobs keyed by BLAKE3 | Manifest v1 already names each file by BLAKE3, so file-level storage needs no new index. Xet deduplicates transfer; a local chunk store would add a second identity and a garbage-collection problem. Revisit if local dedupe matters. |
+| Nix FOD shape | One flat FOD per file, symlink farm for the set | FODs support sha256 and the manifest records it. Flat mode makes the store path the file bytes, so `hoard store` reproduces it and each file caches on its own. |
+| Transport order | Xet when available, HTTP fallback | Xet deduplicates transfer and fits the Hub's large-file path; HTTP keeps a Range-resume path that works without Xet. |
+| Mutable refs | Resolve to a commit sha before download | The manifest records the commit, so a branch or tag that moves later cannot change the artifact identity. |
+| Token source | Environment only | A token flag would land in shell history and process listings; `HF_TOKEN` and `HUGGING_FACE_HUB_TOKEN` keep it out of both. |
+| Signing | Delegate to `nix copy` and the cache | Hoard proves content identity, not publisher identity. Keeping keys out of hoard avoids a second signing policy. |
 | JSON schema | Frozen `schema: 1`, committed schema file | Consumers (`jq`, dashboards, Nix) need a stable contract. Drift is caught by a schema-equality test, and breaking changes require a version bump. |
 | Memory mapping | Zero-copy view, one audited `unsafe` | Inspecting a multi-gigabyte file should be cheap. Keeping the only `unsafe` in one documented function makes the workspace lint meaningful. |
 | Binary split | `hoard` and `hoard-gguf` are separate | The format tool is useful without the artifact layer, and the artifact layer must not grow a GGUF dependency. |

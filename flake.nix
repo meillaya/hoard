@@ -89,20 +89,22 @@
             hash = "sha256:${entry.sha256}";
             toHashFormat = "sri";
           };
+          manifestJson = builtins.readFile manifest;
         in
         pkgs.stdenvNoCC.mkDerivation {
-          inherit name outputHash;
+          inherit name outputHash manifestJson;
           outputHashAlgo = "sha256";
           outputHashMode = "flat";
           impureEnvVars = [ "HF_TOKEN" ];
-          nativeBuildInputs = [ hoard pkgs.cacert manifest ];
+          nativeBuildInputs = [ hoard pkgs.cacert ];
+          passAsFile = [ "manifestJson" ];
           buildCommand = ''
             export HOME="$TMPDIR"
             export XDG_CACHE_HOME="$TMPDIR/.cache"
             export HOARD_STORE="$TMPDIR/hoard-store"
             export SSL_CERT_FILE="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
             mkdir -p "$(dirname "$out")"
-            ${hoard}/bin/hoard fetch --manifest ${pkgs.lib.escapeShellArg (toString manifest)} --file ${pkgs.lib.escapeShellArg path} --out "$out"
+            ${hoard}/bin/hoard fetch --manifest "$manifestJsonPath" --file ${pkgs.lib.escapeShellArg path} --out "$out"
           '';
         };
 

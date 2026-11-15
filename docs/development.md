@@ -1,7 +1,7 @@
 # Development
 
-Use this page to set up the toolchain, run the checks CI runs, regenerate the
-committed schemas and fixtures, and build with Nix.
+Use this page to set up the toolchain, run the checks CI runs, test the fetch
+path, regenerate the committed schemas and fixtures, and build with Nix.
 
 ## Toolchain
 
@@ -32,8 +32,10 @@ devenv test       # formatting, clippy, and tests
 `nix develop --impure` enters the same shell through the flake. The `--impure`
 flag is required because devenv needs the working directory.
 
-The shell exposes scripts: `test`, `check`, `fixtures`, `xet-live`, `roundtrip`,
-and `bench`.
+The shell exposes scripts: `test`, `check`, `fixtures`, `xet-live`, and
+`roundtrip`. `test` is the same check as `devenv test`; `fixtures` downloads the
+real GGUF corpus; `xet-live` runs the network gate; `roundtrip` runs the Nix
+path check.
 
 A system or rustup Rust 1.99.1 with plain cargo is the secondary path:
 
@@ -59,9 +61,10 @@ export XDG_CONFIG_HOME="$PWD/.devenv-config"
 ```
 
 Use `XDG_CACHE_HOME="$PWD/.cache-nix"` for Nix commands if the Nix fetcher cache
-is read-only too. All directories are gitignored. Nix writes build results to
-the Nix store through the daemon; only the fetcher and eval caches need writable
-paths.
+is read-only too. Fetch writes its CAS to the user cache by default; set
+`HOARD_STORE="$PWD/.cache/hoard-store"` to keep it inside the checkout. `.cache/`
+and the XDG directories are gitignored. Nix writes build results to the Nix
+store through the daemon; only the fetcher and eval caches need writable paths.
 
 ## Checks
 
@@ -82,6 +85,20 @@ RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
 ```
 
 On a passing tree, every command exits 0.
+
+The default suite is offline. Two checks are opt-in because they need network
+access or a Nix store round-trip:
+
+```sh
+cargo test -p hoard-hf --test live_xet -- --ignored --nocapture
+bash scripts/check-nix-roundtrip.sh
+```
+
+The live gate downloads from the public Hub over Xet. The round-trip builds the
+consumer example in `examples/nix`, copies its fixed-output derivations to a
+temporary local cache, deletes them, and rebuilds offline. It needs `nix`,
+`nix-store`, and `nix copy` on `PATH`, and it may fetch the example files on a
+cold store.
 
 `scripts/fetch-fixtures.sh` downloads the two real GGUF files into
 `fixtures/real/` (gitignored) and verifies their SHA-256. Tests that need them
