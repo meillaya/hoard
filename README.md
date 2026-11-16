@@ -1,5 +1,11 @@
 # hoard
 
+[![CI](https://github.com/meillaya/hoard/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/meillaya/hoard/actions/workflows/ci.yml)
+[![Nix](https://github.com/meillaya/hoard/actions/workflows/nix.yml/badge.svg?branch=main)](https://github.com/meillaya/hoard/actions/workflows/nix.yml)
+[![crates.io: hoard-artifact](https://img.shields.io/crates/v/hoard-artifact.svg)](https://crates.io/crates/hoard-artifact)
+[![crates.io: hoard-gguf](https://img.shields.io/crates/v/hoard-gguf.svg)](https://crates.io/crates/hoard-gguf)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENCE)
+
 Inspect GGUF model files, fetch and verify Hugging Face artifacts, pin them in a
 canonical manifest, and consume the pinned bytes as Nix fixed-output
 derivations.

@@ -11,6 +11,7 @@
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "hoard";
   version = "0.1.0";
+  __structuredAttrs = true;
 
   src = fetchFromGitHub {
     owner = "meillaya";
