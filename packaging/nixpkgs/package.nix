@@ -9,6 +9,9 @@
 }:
 
 rustPlatform.buildRustPackage (finalAttrs: {
+  # The nixpkgs attribute is hoard-artifact because hoard is taken by
+  # Hyde46/hoard. The upstream project and the installed binary are named
+  # hoard, so pname stays the upstream name.
   pname = "hoard";
   version = "0.1.0";
   __structuredAttrs = true;
@@ -58,9 +61,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
     homepage = "https://github.com/meillaya/hoard";
     changelog = "https://github.com/meillaya/hoard/blob/${finalAttrs.src.rev}/CHANGELOG.md";
     license = lib.licenses.asl20;
-    # No maintainer entry yet: the upstream repository has no nixpkgs
-    # maintainer. Add one before submitting the PR (see packaging/nixpkgs/README.md).
-    maintainers = [ ];
+    maintainers = [ lib.maintainers.meillaya ];
     mainProgram = "hoard";
     platforms = lib.platforms.unix;
   };
