@@ -62,8 +62,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: dtolnay/rust-toolchain@1.99.1
-
       - uses: cachix/install-nix-action@v31
         with:
           extra_nix_config: |
@@ -72,15 +70,8 @@ jobs:
       - name: Fetch real fixtures
         run: bash scripts/fetch-fixtures.sh
 
-      - name: Python dependencies for the oracle
-        run: |
-          python3 -m venv "$RUNNER_TEMP/oracle-venv"
-          "$RUNNER_TEMP/oracle-venv/bin/python" -m pip install --quiet numpy pyyaml
-
       - name: Compare with pinned llama.cpp gguf-py
-        env:
-          HOARD_ORACLE_PYTHON: ${{ runner.temp }}/oracle-venv/bin/python
-        run: bash scripts/check-gguf-oracle.sh
+        run: nix develop --impure --command bash scripts/check-gguf-oracle.sh
 
   cargo:
     name: cargo / linux (secondary)

@@ -18,7 +18,7 @@
     nix
     perl
     pkg-config
-    python3
+    (python3.withPackages (ps: [ ps.numpy ps.pyyaml ]))
     shellcheck
   ];
 
