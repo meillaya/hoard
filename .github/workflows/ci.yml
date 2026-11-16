@@ -72,7 +72,14 @@ jobs:
       - name: Fetch real fixtures
         run: bash scripts/fetch-fixtures.sh
 
+      - name: Python dependencies for the oracle
+        run: |
+          python3 -m venv "$RUNNER_TEMP/oracle-venv"
+          "$RUNNER_TEMP/oracle-venv/bin/python" -m pip install --quiet numpy pyyaml
+
       - name: Compare with pinned llama.cpp gguf-py
+        env:
+          HOARD_ORACLE_PYTHON: ${{ runner.temp }}/oracle-venv/bin/python
         run: bash scripts/check-gguf-oracle.sh
 
   cargo:
