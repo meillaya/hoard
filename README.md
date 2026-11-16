@@ -189,7 +189,7 @@ consumer example is in `examples/nix/flake.nix`, and its manifest is
 - [Manifest v1](docs/manifest.md): fields, canonical form, artifact ID.
 - [CLI reference](docs/usage.md): commands, flags, exit codes, environment.
 - [Fetch and verify artifacts](docs/fetch.md): fetch workflow, CAS, Nix consumer.
-- [Nix packaging](packaging/nixpkgs/README.md): draft nixpkgs expression and review notes.
+- [Nix packaging](packaging/nixpkgs/README.md): nixpkgs package expression and pull request notes.
 - [Limits and non-goals](docs/limitations.md): what hoard does not do.
 - [Security model](docs/security.md): threats, mitigations, residual risks.
 - [Development](docs/development.md): toolchain, checks, Nix, CI, layout.
