@@ -1,10 +1,12 @@
 # nixpkgs packaging draft for hoard
 
-Status: **critical draft.** This directory holds the package expression and the
-PR material for adding [`hoard`](https://github.com/meillaya/hoard) to nixpkgs.
-A draft pull request is open at
-<https://github.com/NixOS/nixpkgs/pull/588800>. It is deliberately not ready to
-merge; the caveats below list the blockers.
+Status: **critical draft, all automated checks green.** This directory holds the
+package expression and the review material for adding
+[`hoard`](https://github.com/meillaya/hoard) to nixpkgs as `hoard-artifact`.
+The draft pull request is
+<https://github.com/NixOS/nixpkgs/pull/588800>. The PR is rebased on current
+`master`, squashed to one commit, includes the `meillaya` maintainer entry, and
+builds with `nixpkgs-review`. It remains a draft pending reviewer sign-off.
 
 ## Why the attribute is not called `hoard`
 
@@ -117,7 +119,8 @@ Result and checks (from the final clean build):
   a by-name package body.
 - `nixfmt --check packaging/nixpkgs/package.nix`: clean.
 
-`nixpkgs-review` is not installed in this environment, so it was not run.
+`nixpkgs-review` was run on the final revision `eca10a66` from a nixpkgs
+checkout. Result: 1 package built on `x86_64-linux` (`hoard-artifact`).
 
 ## Opened draft PR
 
@@ -190,10 +193,10 @@ Tested with `nix-build` against nixpkgs at the project's `flake.lock` pin
 
 ## Honest caveats and blockers
 
-1. **No nixpkgs maintainer.** `meta.maintainers = [ ]`. Adding the package
-   requires either a nixpkgs maintainer to adopt it, or the upstream author to
-   be added to `maintainers/maintainer-list.nix` (a separate PR). This is a
-   review blocker, flagged on purpose.
+1. **Maintainer.** Resolved in the same PR: `maintainers/maintainer-list.nix`
+   adds `meillaya` and the package sets
+   `maintainers = [ lib.maintainers.meillaya ]`. Reviewers can ask to split the
+   maintainer entry into a separate PR.
 2. **Release tag.** Resolved: upstream tagged `v0.1.0`, and the expression now
    pins that tag. `nix-update-script` can track future tags.
 3. **Attribute name collision.** `hoard` exists in nixpkgs
