@@ -33,6 +33,13 @@ cargo install hoard-artifact --locked
 cargo install hoard-gguf --locked
 ```
 
+The NUR package is at [meillaya/nur-packages](https://github.com/meillaya/nur-packages).
+It installs the same two binaries:
+
+```sh
+nix build github:meillaya/nur-packages#hoard-artifact
+```
+
 The package is `hoard-artifact` because the `hoard` and `hoard-cli` names are
 taken; the installed binary is still `hoard`. `hoard-gguf`, `hoard hash`, and
 the `hoard manifest` commands are read-only and offline. `hoard fetch` is the

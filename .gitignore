@@ -13,3 +13,4 @@
 /.devenv-runtime/
 /.devenv-*/
 /.cache-nixpkgs-review/
+/.cache-nur/

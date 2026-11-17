@@ -111,7 +111,7 @@ Remaining for P3:
 
 - Manifest pinning: pin the manifest itself as a flake input by artifact ID
   instead of passing a path.
-- Upstream the helper pattern as a nixpkgs PR or a published flake template.
+- Upstream the helper pattern as a NUR package and a published flake template.
 - Decide whether Nix should learn BLAKE3 directly instead of mapping to the
   manifest `sha256`.
 

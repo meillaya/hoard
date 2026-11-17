@@ -4,6 +4,7 @@
 [![Nix](https://github.com/meillaya/hoard/actions/workflows/nix.yml/badge.svg?branch=main)](https://github.com/meillaya/hoard/actions/workflows/nix.yml)
 [![crates.io: hoard-artifact](https://img.shields.io/crates/v/hoard-artifact.svg)](https://crates.io/crates/hoard-artifact)
 [![crates.io: hoard-gguf](https://img.shields.io/crates/v/hoard-gguf.svg)](https://crates.io/crates/hoard-gguf)
+[![NUR](https://img.shields.io/badge/NUR-meillaya-blue.svg)](https://github.com/meillaya/nur-packages)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENCE)
 
 Inspect GGUF model files, fetch and verify Hugging Face artifacts, pin them in a
@@ -189,7 +190,7 @@ consumer example is in `examples/nix/flake.nix`, and its manifest is
 - [Manifest v1](docs/manifest.md): fields, canonical form, artifact ID.
 - [CLI reference](docs/usage.md): commands, flags, exit codes, environment.
 - [Fetch and verify artifacts](docs/fetch.md): fetch workflow, CAS, Nix consumer.
-- [Nix packaging](packaging/nixpkgs/README.md): nixpkgs package expression and pull request notes.
+- [NUR packages](docs/nur.md): NUR repository, usage, and maintenance.
 - [Limits and non-goals](docs/limitations.md): what hoard does not do.
 - [Security model](docs/security.md): threats, mitigations, residual risks.
 - [Development](docs/development.md): toolchain, checks, Nix, CI, layout.
